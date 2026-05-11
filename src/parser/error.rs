@@ -4,6 +4,7 @@ use pest::error::Error;
 
 use crate::parser::Rule;
 
+#[derive(Debug)]
 pub(crate) struct ParseError {
     message: String,
     line: usize,
@@ -33,6 +34,7 @@ impl ParseError {
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct LoweringError {
     pub(crate) message: String,
     pub(crate) line: usize,

@@ -1,15 +1,20 @@
-use crate::parser::kv::{Access, BitRange};
+use crate::{
+    parser::kv::{Access, BitRange},
+    source_map::FileId,
+};
 
 use super::parse;
 
 // helpers
 
 fn ok_registers(input: &str) -> Vec<super::ir::Register> {
-    parse(input).unwrap_or_else(|e| panic!("expected successful parse, got {} errors", e.len()))
+    parse(input, FileId(0))
+        .unwrap_or_else(|e| panic!("expected successful parse, got {} errors", e.len()))
+        .0
 }
 
 fn err_count(input: &str) -> usize {
-    match parse(input) {
+    match parse(input, FileId(0)) {
         Ok(_) => panic!("expected parse errors but got Ok"),
         Err(e) => e.len(),
     }
@@ -62,30 +67,60 @@ fn two_consecutive_registers() {
     assert_eq!(registers[1].get_fields()[1].access, Access::RW);
 }
 
+#[test]
+fn singel_register_exists_in_source_map() {
+    let src = "-- @reg offset=0x04 name=status\n\
+-- @field bits=0 name=tx_en access=RW\n\
+-- @field bits=1 name=rx_en access=RO\n";
+    let source_map = parse(src, FileId(0)).unwrap().1;
+    assert_eq!(source_map.registers.len(), 1);
+    assert_eq!(source_map.fields.len(), 2);
+    assert_eq!(source_map.register_line(FileId(0), 0), Some(0));
+    assert_eq!(source_map.field_line(FileId(0), 0, 0), Some(1));
+    assert_eq!(source_map.field_line(FileId(0), 0, 1), Some(2));
+}
+
+#[test]
+fn multiple_registers_exists_in_source_map() {
+    let src = "\
+-- @reg offset=0x00 name=ctrl\n\
+-- @field bits=0:6 name=rx_in access=RO\n\
+-- @reg offset=0x04 name=status\n\
+-- @field bits=0:6 name=tx_out access=WO\n\
+-- @field bits=7 name=rx_in access=RW\n";
+    let source_map = parse(src, FileId(0)).unwrap().1;
+    assert_eq!(source_map.registers.len(), 2);
+    assert_eq!(source_map.fields.len(), 3);
+    assert_eq!(source_map.register_line(FileId(0), 0), Some(0));
+    assert_eq!(source_map.register_line(FileId(0), 1), Some(2));
+    assert_eq!(source_map.field_line(FileId(0), 1, 0), Some(3));
+    assert_eq!(source_map.field_line(FileId(0), 1, 1), Some(4));
+}
+
 // error cases
 
 #[test]
 fn single_register_no_fields() {
     let src = "-- @reg offset=0x00 name=ctrl\n";
-    assert!(parse(src).is_err());
+    assert!(parse(src, FileId(0)).is_err());
 }
 
 #[test]
 fn field_without_preceding_register_is_error() {
     let src = "-- @field bits=0 name=en access=RW\n";
-    assert!(parse(src).is_err());
+    assert!(parse(src, FileId(0)).is_err());
 }
 
 #[test]
 fn register_missing_offset_is_error() {
     let src = "-- @reg name=ctrl\n";
-    assert!(parse(src).is_err());
+    assert!(parse(src, FileId(0)).is_err());
 }
 
 #[test]
 fn register_missing_name_is_error() {
     let src = "-- @reg offset=0x00\n";
-    assert!(parse(src).is_err());
+    assert!(parse(src, FileId(0)).is_err());
 }
 
 #[test]
@@ -94,7 +129,7 @@ fn field_missing_name_is_error() {
     let src = "\
 -- @reg offset=0x00 name=ctrl\n\
 -- @field bits=0 access=RW\n";
-    assert!(parse(src).is_err());
+    assert!(parse(src, FileId(0)).is_err());
 }
 
 #[test]
@@ -102,7 +137,7 @@ fn field_missing_bits_is_error() {
     let src = "\
 -- @reg offset=0x00 name=ctrl\n\
 -- @field name=en access=RW\n";
-    assert!(parse(src).is_err());
+    assert!(parse(src, FileId(0)).is_err());
 }
 
 #[test]
@@ -125,5 +160,5 @@ signal s_foo : std_logic;\n\
     // The gap between the @reg and @field (non-annotation line in between)
     // triggers the adjacency guard, so we get one register with no valid field.
     // The register itself must still parse.
-    assert!(parse(src).is_err());
+    assert!(parse(src, FileId(0)).is_err());
 }

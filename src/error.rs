@@ -1,5 +1,6 @@
 use crate::parser::{LoweringError, ParseError};
 
+#[derive(Debug)]
 pub(crate) enum LatchError {
     Parse(ParseError),
     Lowering(LoweringError),
