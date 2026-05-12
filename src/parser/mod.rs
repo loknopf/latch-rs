@@ -44,11 +44,7 @@ pub(crate) fn parse(
 
     enum LowerState {
         Empty,
-        Active {
-            reg: Register,
-            reg_idx: usize,
-            line: usize,
-        },
+        Active { reg: Register, line: usize },
         Failed,
     }
 
@@ -58,7 +54,7 @@ pub(crate) fn parse(
     for (ann, kv) in lowerable {
         match ann.kind {
             AnnotationKind::Reg => {
-                if let LowerState::Active { reg, line, reg_idx } = lower_state {
+                if let LowerState::Active { reg, line } = lower_state {
                     if let Err(e) = empty_reg_guard(&reg, line) {
                         errors.push(e.into());
                     } else {
@@ -73,12 +69,10 @@ pub(crate) fn parse(
                         registers.push(reg_id);
                     }
                 }
-                let reg_idx = registers.len();
                 lower_state = match Register::from_kv_values(&kv, ann.line) {
                     Ok(reg) => LowerState::Active {
                         reg,
                         line: ann.line,
-                        reg_idx,
                     },
                     Err(e) => {
                         errors.push(e.into());
@@ -94,7 +88,7 @@ pub(crate) fn parse(
                     }
                     .into(),
                 ),
-                LowerState::Active { reg, line, reg_idx } => {
+                LowerState::Active { reg, line } => {
                     //guard against orphaned -- @field lines that apear after a -- @reg but not directly after it or another -- @field
                     if ann.line.saturating_sub(*line + reg.get_fields().len()) != 1 {
                         errors.push(
@@ -129,7 +123,7 @@ pub(crate) fn parse(
         }
     }
 
-    if let LowerState::Active { reg, reg_idx, line } = lower_state {
+    if let LowerState::Active { reg, line } = lower_state {
         if let Err(e) = empty_reg_guard(&reg, line) {
             errors.push(e.into());
         } else {

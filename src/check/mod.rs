@@ -6,7 +6,7 @@ use crate::{
 
 mod error;
 
-pub(crate) fn check_field_overlap(state: &State, reg: Register) -> Result<(), Vec<CheckError>> {
+pub(crate) fn check_field_overlap(state: &State, reg: &Register) -> Result<(), Vec<CheckError>> {
     let pairs: Vec<(&FieldId, &FieldId)> = reg
         .get_fields()
         .iter()

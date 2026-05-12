@@ -60,7 +60,7 @@ impl Register {
         self.fields.push(field_id);
     }
 
-    pub(crate) fn get_fields(&self) -> &Vec<FieldId> {
+    pub(crate) fn get_fields(&self) -> &[FieldId] {
         &self.fields
     }
 }
