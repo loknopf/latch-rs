@@ -1,20 +1,27 @@
 use crate::{
-    parser::kv::{Access, BitRange},
-    source_map::FileId,
+    parser::{
+        Field, Register,
+        kv::{Access, BitRange},
+    },
+    state::{FileId, State},
 };
 
 use super::parse;
 
 // helpers
 
-fn ok_registers(input: &str) -> Vec<super::ir::Register> {
-    parse(input, FileId(0))
+fn ok_registers(state: &mut State, input: &str) -> Vec<Register> {
+    parse(state, input, FileId(0))
         .unwrap_or_else(|e| panic!("expected successful parse, got {} errors", e.len()))
-        .0
+        .iter()
+        .map(|reg| state.get_reg(*reg))
+        .cloned()
+        .collect()
 }
 
 fn err_count(input: &str) -> usize {
-    match parse(input, FileId(0)) {
+    let mut state = State::default();
+    match parse(&mut state, input, FileId(0)) {
         Ok(_) => panic!("expected parse errors but got Ok"),
         Err(e) => e.len(),
     }
@@ -24,7 +31,8 @@ fn err_count(input: &str) -> usize {
 
 #[test]
 fn empty_input_yields_no_registers() {
-    assert_eq!(ok_registers("").len(), 0);
+    let mut state = State::default();
+    assert_eq!(ok_registers(&mut state, "").len(), 0);
 }
 
 #[test]
@@ -33,15 +41,19 @@ fn register_with_two_fields() {
 -- @reg offset=0x04 name=status\n\
 -- @field bits=0 name=tx_en access=RW\n\
 -- @field bits=1 name=rx_en access=RO\n";
-    let registers = ok_registers(src);
+    let mut state = State::default();
+    let registers = ok_registers(&mut state, src);
+    let field_ids = registers[0].get_fields().clone();
+    let field_0 = state.get_field(field_ids[0]).clone();
+    let field_1 = state.get_field(field_ids[1]).clone();
     assert_eq!(registers.len(), 1);
     assert_eq!(registers[0].get_fields().len(), 2);
-    assert_eq!(registers[0].get_fields()[0].name, "tx_en");
-    assert_eq!(registers[0].get_fields()[0].bits, BitRange::Single(0));
-    assert_eq!(registers[0].get_fields()[0].access, Access::RW);
-    assert_eq!(registers[0].get_fields()[1].name, "rx_en");
-    assert_eq!(registers[0].get_fields()[1].bits, BitRange::Single(1));
-    assert_eq!(registers[0].get_fields()[1].access, Access::RO);
+    assert_eq!(field_0.name, "tx_en");
+    assert_eq!(field_0.bits, BitRange::Single(0));
+    assert_eq!(field_0.access, Access::RW);
+    assert_eq!(field_1.name, "rx_en");
+    assert_eq!(field_1.bits, BitRange::Single(1));
+    assert_eq!(field_1.access, Access::RO);
 }
 
 #[test]
@@ -52,49 +64,70 @@ fn two_consecutive_registers() {
 -- @reg offset=0x04 name=status\n\
 -- @field bits=0:6 name=tx_out access=WO\n\
 -- @field bits=7 name=rx_in access=RW\n";
-    let registers = ok_registers(src);
+    let mut state = State::default();
+    let registers = ok_registers(&mut state, src);
+    let reg0_fields: Vec<Field> = registers[0]
+        .get_fields()
+        .iter()
+        .map(|&id| state.get_field(id).clone())
+        .collect();
+    let reg1_fields: Vec<Field> = registers[1]
+        .get_fields()
+        .iter()
+        .map(|&id| state.get_field(id).clone())
+        .collect();
     assert_eq!(registers.len(), 2);
     assert_eq!(registers[0].get_fields().len(), 1);
     assert_eq!(registers[1].get_fields().len(), 2);
-    assert_eq!(registers[0].get_fields()[0].name, "rx_in");
-    assert_eq!(registers[0].get_fields()[0].bits, BitRange::Span(0, 6));
-    assert_eq!(registers[0].get_fields()[0].access, Access::RO);
-    assert_eq!(registers[1].get_fields()[0].name, "tx_out");
-    assert_eq!(registers[1].get_fields()[0].bits, BitRange::Span(0, 6));
-    assert_eq!(registers[1].get_fields()[0].access, Access::WO);
-    assert_eq!(registers[1].get_fields()[1].name, "rx_in");
-    assert_eq!(registers[1].get_fields()[1].bits, BitRange::Single(7));
-    assert_eq!(registers[1].get_fields()[1].access, Access::RW);
+    assert_eq!(reg0_fields[0].name, "rx_in");
+    assert_eq!(reg0_fields[0].bits, BitRange::Span(0, 6));
+    assert_eq!(reg0_fields[0].access, Access::RO);
+    assert_eq!(reg1_fields[0].name, "tx_out");
+    assert_eq!(reg1_fields[0].bits, BitRange::Span(0, 6));
+    assert_eq!(reg1_fields[0].access, Access::WO);
+    assert_eq!(reg1_fields[1].name, "rx_in");
+    assert_eq!(reg1_fields[1].bits, BitRange::Single(7));
+    assert_eq!(reg1_fields[1].access, Access::RW);
 }
 
 #[test]
-fn singel_register_exists_in_source_map() {
-    let src = "-- @reg offset=0x04 name=status\n\
+fn single_register_exists_in_source_map() {
+    let src = "\
+-- @reg offset=0x04 name=status\n\
 -- @field bits=0 name=tx_en access=RW\n\
 -- @field bits=1 name=rx_en access=RO\n";
-    let source_map = parse(src, FileId(0)).unwrap().1;
-    assert_eq!(source_map.registers.len(), 1);
-    assert_eq!(source_map.fields.len(), 2);
-    assert_eq!(source_map.register_line(FileId(0), 0), Some(0));
-    assert_eq!(source_map.field_line(FileId(0), 0, 0), Some(1));
-    assert_eq!(source_map.field_line(FileId(0), 0, 1), Some(2));
+    let mut state = State::default();
+    let reg_ids = parse(&mut state, src, FileId(0)).unwrap();
+    let field_ids = state.get_reg(reg_ids[0]).get_fields().clone();
+    assert_eq!(reg_ids.len(), 1);
+    assert_eq!(field_ids.len(), 2);
+    assert_eq!(state.get_reg_loc(reg_ids[0]).map(|l| l.line), Some(0));
+    assert_eq!(state.get_field_loc(field_ids[0]).map(|l| l.line), Some(1));
+    assert_eq!(state.get_field_loc(field_ids[1]).map(|l| l.line), Some(2));
 }
 
 #[test]
-fn multiple_registers_exists_in_source_map() {
+fn multiple_registers_exist_in_source_map() {
     let src = "\
 -- @reg offset=0x00 name=ctrl\n\
 -- @field bits=0:6 name=rx_in access=RO\n\
 -- @reg offset=0x04 name=status\n\
 -- @field bits=0:6 name=tx_out access=WO\n\
 -- @field bits=7 name=rx_in access=RW\n";
-    let source_map = parse(src, FileId(0)).unwrap().1;
-    assert_eq!(source_map.registers.len(), 2);
-    assert_eq!(source_map.fields.len(), 3);
-    assert_eq!(source_map.register_line(FileId(0), 0), Some(0));
-    assert_eq!(source_map.register_line(FileId(0), 1), Some(2));
-    assert_eq!(source_map.field_line(FileId(0), 1, 0), Some(3));
-    assert_eq!(source_map.field_line(FileId(0), 1, 1), Some(4));
+    let mut state = State::default();
+    let reg_ids = parse(&mut state, src, FileId(0)).unwrap();
+    let reg1_field_ids = state.get_reg(reg_ids[1]).get_fields().clone();
+    assert_eq!(reg_ids.len(), 2);
+    assert_eq!(state.get_reg_loc(reg_ids[0]).map(|l| l.line), Some(0));
+    assert_eq!(state.get_reg_loc(reg_ids[1]).map(|l| l.line), Some(2));
+    assert_eq!(
+        state.get_field_loc(reg1_field_ids[0]).map(|l| l.line),
+        Some(3)
+    );
+    assert_eq!(
+        state.get_field_loc(reg1_field_ids[1]).map(|l| l.line),
+        Some(4)
+    );
 }
 
 // error cases
@@ -102,34 +135,33 @@ fn multiple_registers_exists_in_source_map() {
 #[test]
 fn single_register_no_fields() {
     let src = "-- @reg offset=0x00 name=ctrl\n";
-    assert!(parse(src, FileId(0)).is_err());
+    assert!(parse(&mut State::default(), src, FileId(0)).is_err());
 }
 
 #[test]
 fn field_without_preceding_register_is_error() {
     let src = "-- @field bits=0 name=en access=RW\n";
-    assert!(parse(src, FileId(0)).is_err());
+    assert!(parse(&mut State::default(), src, FileId(0)).is_err());
 }
 
 #[test]
 fn register_missing_offset_is_error() {
     let src = "-- @reg name=ctrl\n";
-    assert!(parse(src, FileId(0)).is_err());
+    assert!(parse(&mut State::default(), src, FileId(0)).is_err());
 }
 
 #[test]
 fn register_missing_name_is_error() {
     let src = "-- @reg offset=0x00\n";
-    assert!(parse(src, FileId(0)).is_err());
+    assert!(parse(&mut State::default(), src, FileId(0)).is_err());
 }
 
 #[test]
 fn field_missing_name_is_error() {
-    // Valid register followed by a field missing its required `name` key.
     let src = "\
 -- @reg offset=0x00 name=ctrl\n\
 -- @field bits=0 access=RW\n";
-    assert!(parse(src, FileId(0)).is_err());
+    assert!(parse(&mut State::default(), src, FileId(0)).is_err());
 }
 
 #[test]
@@ -137,12 +169,11 @@ fn field_missing_bits_is_error() {
     let src = "\
 -- @reg offset=0x00 name=ctrl\n\
 -- @field name=en access=RW\n";
-    assert!(parse(src, FileId(0)).is_err());
+    assert!(parse(&mut State::default(), src, FileId(0)).is_err());
 }
 
 #[test]
 fn non_adjacent_field_is_error() {
-    // A blank line between @reg and @field breaks adjacency.
     let src = "\
 -- @reg offset=0x00 name=ctrl\n\
 \n\
@@ -157,8 +188,5 @@ signal s_foo : std_logic;\n\
 -- @reg offset=0x00 name=ctrl\n\
 -- some unrelated comment\n\
 -- @field bits=0 name=en access=RW\n";
-    // The gap between the @reg and @field (non-annotation line in between)
-    // triggers the adjacency guard, so we get one register with no valid field.
-    // The register itself must still parse.
-    assert!(parse(src, FileId(0)).is_err());
+    assert!(parse(&mut State::default(), src, FileId(0)).is_err());
 }

@@ -1,13 +1,17 @@
-use crate::parser::{
-    error::LoweringError,
-    kv::{Access, BitRange, KvPair, Value},
+use crate::{
+    parser::{
+        error::LoweringError,
+        kv::{Access, BitRange, KvPair, Value},
+    },
+    state::FieldId,
 };
 
+#[derive(Debug, Clone)]
 pub(crate) struct Register {
     offset: u64,
     name: String,
     description: Option<String>,
-    fields: Vec<Field>,
+    fields: Vec<FieldId>,
 }
 
 impl Register {
@@ -52,15 +56,16 @@ impl Register {
         })
     }
 
-    pub(crate) fn add_field(&mut self, field: Field) {
-        self.fields.push(field);
+    pub(crate) fn add_field(&mut self, field_id: FieldId) {
+        self.fields.push(field_id);
     }
 
-    pub(crate) fn get_fields(&self) -> &Vec<Field> {
+    pub(crate) fn get_fields(&self) -> &Vec<FieldId> {
         &self.fields
     }
 }
 
+#[derive(Debug, Clone)]
 pub(crate) struct Field {
     pub(crate) name: String,
     pub(crate) bits: BitRange,
@@ -117,6 +122,15 @@ impl Field {
             enum_values: enum_values,
             name: name.as_string().expect("Expecting a name.").clone(),
         })
+    }
+
+    pub(crate) fn bits_overlap(&self, other: &Field) -> bool {
+        match (self.bits, other.bits) {
+            (BitRange::Single(i), BitRange::Single(o)) => i == o,
+            (BitRange::Single(i), BitRange::Span(o, v))
+            | (BitRange::Span(o, v), BitRange::Single(i)) => o <= i && i <= v,
+            (BitRange::Span(i, o), BitRange::Span(k, v)) => i <= v && k <= o,
+        }
     }
 }
 

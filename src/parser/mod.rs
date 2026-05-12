@@ -4,14 +4,13 @@ use pest_derive::Parser;
 
 pub(crate) use crate::parser::{
     error::{LoweringError, ParseError},
-    ir::Register,
+    ir::{Field, Register},
     kv::parse_kv_pairs,
     scanner::{AnnotationKind, scan},
 };
 use crate::{
     error::LatchError,
-    parser::ir::Field,
-    source_map::{FileId, SourceMap},
+    state::{FileId, Location, RegId, State},
 };
 
 mod error;
@@ -26,9 +25,10 @@ mod tests;
 struct LatchParser;
 
 pub(crate) fn parse(
+    state: &mut State,
     input: &str,
     file_id: FileId,
-) -> Result<(Vec<Register>, SourceMap), Vec<LatchError>> {
+) -> Result<Vec<RegId>, Vec<LatchError>> {
     let annotations = scan(input);
     let mut errors: Vec<LatchError> = Vec::new();
     let mut lowerable = Vec::new();
@@ -42,7 +42,7 @@ pub(crate) fn parse(
         }
     }
 
-    enum State {
+    enum LowerState {
         Empty,
         Active {
             reg: Register,
@@ -52,43 +52,49 @@ pub(crate) fn parse(
         Failed,
     }
 
-    let mut registers: Vec<Register> = Vec::new();
-    let mut state: State = State::Empty;
-    let mut source_map = SourceMap::default();
+    let mut registers: Vec<RegId> = Vec::new();
+    let mut lower_state: LowerState = LowerState::Empty;
 
     for (ann, kv) in lowerable {
         match ann.kind {
             AnnotationKind::Reg => {
-                if let State::Active { reg, line, reg_idx } = state {
+                if let LowerState::Active { reg, line, reg_idx } = lower_state {
                     if let Err(e) = empty_reg_guard(&reg, line) {
                         errors.push(e.into());
                     } else {
-                        source_map.insert_register(file_id, reg_idx, line);
-                        registers.push(reg);
+                        let reg_id = state.insert_reg(reg);
+                        state.add_reg_loc(
+                            reg_id,
+                            Location {
+                                line,
+                                file: file_id,
+                            },
+                        );
+                        registers.push(reg_id);
                     }
                 }
                 let reg_idx = registers.len();
-                state = match Register::from_kv_values(&kv, ann.line) {
-                    Ok(reg) => State::Active {
+                lower_state = match Register::from_kv_values(&kv, ann.line) {
+                    Ok(reg) => LowerState::Active {
                         reg,
                         line: ann.line,
                         reg_idx,
                     },
                     Err(e) => {
                         errors.push(e.into());
-                        State::Failed
+                        LowerState::Failed
                     }
                 };
             }
-            AnnotationKind::Field => match &mut state {
-                State::Empty => errors.push(
+            AnnotationKind::Field => match &mut lower_state {
+                LowerState::Empty => errors.push(
                     LoweringError {
                         message: "field annotation must follow a reg annotation".to_string(),
                         line: ann.line,
                     }
                     .into(),
                 ),
-                State::Active { reg, line, reg_idx } => {
+                LowerState::Active { reg, line, reg_idx } => {
                     //guard against orphaned -- @field lines that apear after a -- @reg but not directly after it or another -- @field
                     if ann.line.saturating_sub(*line + reg.get_fields().len()) != 1 {
                         errors.push(
@@ -102,36 +108,45 @@ pub(crate) fn parse(
                     } else {
                         match Field::from_kv_values(&kv, ann.line) {
                             Ok(f) => {
-                                source_map.insert_field(
-                                    file_id,
-                                    *reg_idx,
-                                    reg.get_fields().len(),
-                                    ann.line,
+                                let field_id = state.insert_field(f);
+                                state.add_field_loc(
+                                    field_id,
+                                    Location {
+                                        line: ann.line,
+                                        file: file_id,
+                                    },
                                 );
-                                reg.add_field(f);
+                                reg.add_field(field_id);
                             }
                             Err(e) => errors.push(e.into()),
                         }
                     }
                 }
-                State::Failed => {
+                LowerState::Failed => {
                     continue;
                 }
             },
         }
     }
 
-    if let State::Active { reg, reg_idx, line } = state {
+    if let LowerState::Active { reg, reg_idx, line } = lower_state {
         if let Err(e) = empty_reg_guard(&reg, line) {
             errors.push(e.into());
         } else {
-            source_map.insert_register(file_id, reg_idx, line);
-            registers.push(reg);
+            let reg_id = state.insert_reg(reg);
+            state.add_reg_loc(
+                reg_id,
+                Location {
+                    line,
+                    file: file_id,
+                },
+            );
+            registers.push(reg_id);
         }
     }
 
     if errors.is_empty() {
-        Ok((registers, source_map))
+        Ok(registers)
     } else {
         Err(errors)
     }
