@@ -63,6 +63,10 @@ impl Register {
     pub(crate) fn get_fields(&self) -> &[FieldId] {
         &self.fields
     }
+
+    pub(crate) fn get_name(&self) -> &str {
+        &self.name
+    }
 }
 
 #[derive(Debug, Clone)]

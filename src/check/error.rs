@@ -1,5 +1,7 @@
-use crate::state::FieldId;
+use crate::state::{FieldId, RegId};
 
 pub(crate) enum CheckError {
-    FieldOverlap { a: FieldId, b: FieldId },
+    FieldOverlap { first: FieldId, other: FieldId },
+    RegNameCollision { first: RegId, other: RegId },
+    FieldNameCollision { first: FieldId, other: FieldId },
 }
