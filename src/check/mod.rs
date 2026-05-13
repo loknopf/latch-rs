@@ -41,18 +41,26 @@ pub(crate) fn check_reg_name_collisions(
     state: &State,
     reg_ids: &[RegId],
 ) -> Result<(), Vec<CheckError>> {
-    let regs: Vec<&Register> = reg_ids.iter().map(|id| state.get_reg(*id)).collect();
-    // This should be using RegIds - the CheckError::NameCollision expects (RegId, RegId)
-    let pairs: Vec<(&Register, &Register)> = regs
+    let pairs: Vec<(RegId, RegId)> = reg_ids
         .iter()
         .enumerate()
-        .flat_map(|(i, reg_a)| {
-            regs[i + 1..]
+        .flat_map(|(i, a_id)| {
+            let reg_a = state.get_reg(*a_id);
+            reg_ids[i + 1..]
                 .iter()
-                .filter(move |reg_b| reg_a.get_name() == reg_b.get_name())
-                .map(move |reg_b| (*reg_a, *reg_b))
+                .filter(move |b_id| reg_a.get_name() == state.get_reg(**b_id).get_name())
+                .map(move |b_id| (*a_id, *b_id))
         })
         .collect();
-
-    Ok(())
+    if !pairs.is_empty() {
+        Err(pairs
+            .iter()
+            .map(|(a, b)| CheckError::RegNameCollision {
+                first: *a,
+                other: *b,
+            })
+            .collect())
+    } else {
+        Ok(())
+    }
 }

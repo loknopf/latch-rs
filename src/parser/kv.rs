@@ -135,6 +135,7 @@ pub enum BitRange {
 }
 
 impl From<Pair<'_, Rule>> for BitRange {
+    //TODO: Add the possibility that BitRange can be specified using "Number" rule of grammar
     fn from(value: Pair<'_, Rule>) -> Self {
         debug_assert!(matches!(value.as_rule(), Rule::bit_range));
         let split: Vec<&str> = value.as_str().split(':').collect();
