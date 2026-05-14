@@ -43,6 +43,14 @@ impl TomlError {
             file: Some(file),
         }
     }
+
+    fn with_span(self, span: Range<usize>) -> Self {
+        Self {
+            message: self.message,
+            span: Some(span),
+            file: self.file,
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize)]
