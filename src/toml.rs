@@ -2,6 +2,7 @@ use std::ops::Range;
 
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
+use toml::Value;
 
 use crate::{
     ir::{Field, Register},
@@ -27,6 +28,14 @@ impl From<toml::de::Error> for TomlError {
 }
 
 impl TomlError {
+    fn msg(message: impl Into<String>) -> Self {
+        //TODO: see if we can pass a span value
+        Self {
+            message: message.into(),
+            span: None,
+            file: None,
+        }
+    }
     fn with_file(self, file: FileId) -> Self {
         Self {
             message: self.message,
@@ -40,6 +49,24 @@ impl TomlError {
 struct TomlFile {
     #[serde(flatten)]
     registers: IndexMap<String, TomlRegister>,
+}
+
+impl TryFrom<toml::Value> for TomlFile {
+    type Error = TomlError;
+    fn try_from(value: toml::Value) -> Result<Self, Self::Error> {
+        if let Value::Table(t) = value {
+            let mut reg_map = IndexMap::default();
+            for (key, value) in t {
+                let toml_reg = TomlRegister::try_from(value)?;
+                reg_map.insert(key, toml_reg);
+            }
+            Ok(Self { registers: reg_map })
+        } else {
+            Err(TomlError::msg(
+                "latch-rs toml file may only contain top level tables",
+            ))
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -79,12 +106,55 @@ impl TomlRegister {
     }
 }
 
+impl TryFrom<toml::Value> for TomlRegister {
+    type Error = TomlError;
+    fn try_from(value: toml::Value) -> Result<Self, Self::Error> {
+        let mut offset: Option<u64> = None;
+        let mut description: Option<String> = None;
+        let mut fields = IndexMap::default();
+        if let Value::Table(t) = value {
+            for (key, value) in t {
+                match value {
+                    Value::Table(_) => {
+                        fields.insert(key, TomlField::try_from(value)?);
+                    }
+                    Value::String(s) => {
+                        if key == "description" {
+                            description = Some(s);
+                        }
+                    }
+                    Value::Integer(k) => {
+                        if key == "offset" {
+                            offset = Some(k as u64)
+                        }
+                    }
+                    _ => {
+                        return Err(TomlError::msg(
+                            "Register must contain only keys of type Table, String or Integer",
+                        ));
+                    }
+                }
+            }
+            let offset =
+                offset.ok_or_else(|| TomlError::msg("Register requires an offset member"))?;
+            Ok(Self {
+                offset: offset,
+                description: description,
+                fields: fields,
+            })
+        } else {
+            Err(TomlError::msg("Register must be a table"))
+        }
+    }
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 struct TomlField {
     bits: BitRange,
     #[serde(skip_serializing_if = "Access::is_read_only")]
     access: Access,
     description: Option<String>,
+    #[serde(rename = "enum")]
     enum_values: Option<Vec<String>>,
 }
 
@@ -111,20 +181,65 @@ impl TomlField {
     }
 }
 
+impl TryFrom<toml::Value> for TomlField {
+    type Error = TomlError;
+    fn try_from(value: toml::Value) -> Result<Self, Self::Error> {
+        if let Value::Table(table) = value {
+            let bits = table
+                .get("bits")
+                .ok_or_else(|| TomlError::msg("field is missing required member 'bits'"))?;
+            let bits =
+                BitRange::deserialize(bits.clone()).map_err(|e| TomlError::msg(e.to_string()))?;
+            let access = match table.get("access") {
+                Some(v) => {
+                    Access::deserialize(v.clone()).map_err(|e| TomlError::msg(e.to_string()))?
+                }
+                None => Access::RO,
+            };
+            let description = table
+                .get("description")
+                .map(|v| match v {
+                    Value::String(s) => Ok(s.clone()),
+                    _ => Err(TomlError::msg("description member must be a string")),
+                })
+                .transpose()?;
+            let enum_values = table
+                .get("enum")
+                .map(|v| match v {
+                    Value::Array(arr) => arr
+                        .iter()
+                        .map(|item| match item {
+                            Value::String(s) => Ok(s.clone()),
+                            _ => Err(TomlError::msg("enum values must be strings")),
+                        })
+                        .collect::<Result<Vec<_>, _>>(),
+                    _ => Err(TomlError::msg("enum values must be an array")),
+                })
+                .transpose()?;
+            Ok(TomlField {
+                bits,
+                access,
+                description,
+                enum_values,
+            })
+        } else {
+            Err(TomlError::msg("Expected a value table."))
+        }
+    }
+}
+
 pub(crate) fn from_toml(
     state: &mut State,
     src: &str,
     file: FileId,
 ) -> Result<Vec<RegId>, TomlError> {
-    let file_result: Result<TomlFile, toml::de::Error> = toml::from_str(src);
-    match file_result {
-        Ok(f) => Ok(f
-            .registers
-            .into_iter()
-            .map(|(reg_name, reg)| reg.into_reg(reg_name, state))
-            .collect()),
-        Err(e) => Err(TomlError::from(e).with_file(file)),
-    }
+    let value: toml::Value = toml::from_str(src)?;
+    let file = TomlFile::try_from(value)?;
+    Ok(file
+        .registers
+        .into_iter()
+        .map(|(reg_name, reg)| reg.into_reg(reg_name, state))
+        .collect())
 }
 
 pub(crate) fn to_toml(state: &State) -> Result<String, toml::ser::Error> {
@@ -134,7 +249,7 @@ pub(crate) fn to_toml(state: &State) -> Result<String, toml::ser::Error> {
             .iter()
             .map(|reg| {
                 (
-                    reg.get_name().clone().to_string(),
+                    reg.get_name().to_string(),
                     TomlRegister::from_reg(reg, state),
                 )
             })
