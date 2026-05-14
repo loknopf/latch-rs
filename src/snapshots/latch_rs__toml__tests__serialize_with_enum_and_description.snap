@@ -7,7 +7,7 @@ offset = 4
 
 [status.mode]
 bits = "0:1"
-enum_values = [
+enum = [
     "fast",
     "slow",
     "idle",
