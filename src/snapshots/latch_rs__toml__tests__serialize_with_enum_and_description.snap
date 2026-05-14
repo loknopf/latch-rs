@@ -1,0 +1,14 @@
+---
+source: src/toml.rs
+expression: toml
+---
+[status]
+offset = 4
+
+[status.mode]
+bits = "0:1"
+enum_values = [
+    "fast",
+    "slow",
+    "idle",
+]

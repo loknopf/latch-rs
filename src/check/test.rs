@@ -1,5 +1,8 @@
 use crate::{
-    check::{check_field_name_collision, check_field_overlap, check_reg_name_collisions, error::CheckError},
+    check::{
+        check_field_name_collision, check_field_overlap, check_reg_name_collisions,
+        error::CheckError,
+    },
     parser::parse,
     state::{FileId, State},
 };
@@ -156,7 +159,11 @@ fn test_field_name_three_way_collision() {
     let reg = state.get_reg(reg_ids[0]);
     let errors = check_field_name_collision(&state, reg.get_fields()).unwrap_err();
     assert_eq!(errors.len(), 3);
-    assert!(errors.iter().all(|e| matches!(e, CheckError::FieldNameCollision { .. })));
+    assert!(
+        errors
+            .iter()
+            .all(|e| matches!(e, CheckError::FieldNameCollision { .. }))
+    );
 }
 
 #[test]

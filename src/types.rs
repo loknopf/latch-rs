@@ -54,6 +54,12 @@ pub(crate) enum Access {
     WO,
 }
 
+impl Access {
+    pub(crate) fn is_read_only(&self) -> bool {
+        matches!(self, Access::RO)
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum BitRange {
     Single(u32),

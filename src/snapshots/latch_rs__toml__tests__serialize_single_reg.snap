@@ -1,0 +1,13 @@
+---
+source: src/toml.rs
+expression: toml
+---
+[ctrl]
+offset = 0
+
+[ctrl.enable]
+bits = "0"
+access = "RW"
+
+[ctrl.mode]
+bits = "1:3"
