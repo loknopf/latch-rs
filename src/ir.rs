@@ -1,9 +1,7 @@
 use crate::{
-    parser::{
-        error::LoweringError,
-        kv::{Access, BitRange, KvPair, Value},
-    },
+    parser::{KvPair, LoweringError},
     state::FieldId,
+    types::{Access, BitRange, Value},
 };
 
 #[derive(Debug, Clone)]
@@ -15,6 +13,20 @@ pub(crate) struct Register {
 }
 
 impl Register {
+    pub(crate) fn new(
+        offset: u64,
+        name: String,
+        description: Option<String>,
+        fields: Vec<FieldId>,
+    ) -> Self {
+        Self {
+            offset,
+            name,
+            description,
+            fields,
+        }
+    }
+
     pub(crate) fn from_kv_values(values: &[KvPair], line: usize) -> Result<Self, LoweringError> {
         let offset = require(
             values,
@@ -66,6 +78,14 @@ impl Register {
 
     pub(crate) fn get_name(&self) -> &str {
         &self.name
+    }
+
+    pub(crate) fn get_offset(&self) -> u64 {
+        self.offset
+    }
+
+    pub(crate) fn get_description(&self) -> &Option<String> {
+        &self.description
     }
 }
 

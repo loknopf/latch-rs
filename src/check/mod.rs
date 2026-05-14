@@ -1,6 +1,6 @@
 use crate::{
     check::error::CheckError,
-    parser::{Field, Register},
+    ir::{Field, Register},
     state::{FieldId, RegId, State},
 };
 
@@ -58,6 +58,34 @@ pub(crate) fn check_reg_name_collisions(
             .map(|(a, b)| CheckError::RegNameCollision {
                 first: *a,
                 other: *b,
+            })
+            .collect())
+    } else {
+        Ok(())
+    }
+}
+
+pub(crate) fn check_field_name_collision(
+    state: &State,
+    fields: &[FieldId],
+) -> Result<(), Vec<CheckError>> {
+    let pairs: Vec<(FieldId, FieldId)> = fields
+        .iter()
+        .enumerate()
+        .flat_map(|(i, a_id)| {
+            let field_a = state.get_field(*a_id);
+            fields[i + 1..]
+                .iter()
+                .filter(|b_id| field_a.name == state.get_field(**b_id).name)
+                .map(|b_id| (*a_id, *b_id))
+        })
+        .collect();
+    if !pairs.is_empty() {
+        Err(pairs
+            .iter()
+            .map(|(a_id, b_id)| CheckError::FieldNameCollision {
+                first: *a_id,
+                other: *b_id,
             })
             .collect())
     } else {

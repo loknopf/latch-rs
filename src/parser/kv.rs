@@ -1,4 +1,7 @@
-use crate::parser::{LatchParser, Rule};
+use crate::{
+    parser::{LatchParser, Rule},
+    types::{Access, BitRange, Value},
+};
 use pest::{Parser, error::Error, iterators::Pair};
 
 pub(crate) fn parse_kv_pairs(input: &str) -> Result<Vec<KvPair>, Error<Rule>> {
@@ -27,53 +30,6 @@ impl From<Pair<'_, Rule>> for KvPair {
         let key = inner.next().unwrap().as_str().to_string();
         let value = Value::from(inner.next().expect("Expecting a kv_pair to have a value."));
         KvPair { key, value }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub enum Value {
-    BitRange(BitRange),
-    Access(Access),
-    HexNumber(u64),
-    BinNumber(u64),
-    QuotedCSV(Vec<String>),
-    Bare(String),
-}
-
-impl Value {
-    pub(crate) fn as_bit_range(&self) -> Option<BitRange> {
-        match self {
-            Self::BitRange(b) => Some(*b),
-            _ => None,
-        }
-    }
-
-    pub(crate) fn as_access(&self) -> Option<Access> {
-        match self {
-            Self::Access(a) => Some(*a),
-            _ => None,
-        }
-    }
-
-    pub(crate) fn as_u64(&self) -> Option<u64> {
-        match self {
-            Self::BinNumber(n) | Self::HexNumber(n) => Some(*n),
-            _ => None,
-        }
-    }
-
-    pub(crate) fn as_string(&self) -> Option<&String> {
-        match self {
-            Self::Bare(s) => Some(s),
-            _ => None,
-        }
-    }
-
-    pub(crate) fn as_vec_string(&self) -> Option<&Vec<String>> {
-        match self {
-            Self::QuotedCSV(vs) => Some(vs),
-            _ => None,
-        }
     }
 }
 
@@ -107,13 +63,6 @@ impl From<Pair<'_, Rule>> for Value {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Access {
-    RW,
-    RO,
-    WO,
-}
-
 impl From<Pair<'_, Rule>> for Access {
     fn from(value: Pair<'_, Rule>) -> Self {
         debug_assert!(matches!(value.as_rule(), Rule::access));
@@ -126,12 +75,6 @@ impl From<Pair<'_, Rule>> for Access {
             ),
         }
     }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum BitRange {
-    Single(u32),
-    Span(u32, u32),
 }
 
 impl From<Pair<'_, Rule>> for BitRange {

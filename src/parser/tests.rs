@@ -1,9 +1,7 @@
 use crate::{
-    parser::{
-        Field, Register,
-        kv::{Access, BitRange},
-    },
+    ir::{Field, Register},
     state::{FileId, State},
+    types::{Access, BitRange},
 };
 
 use super::parse;

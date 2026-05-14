@@ -4,17 +4,16 @@ use pest_derive::Parser;
 
 pub(crate) use crate::parser::{
     error::{LoweringError, ParseError},
-    ir::{Field, Register},
-    kv::parse_kv_pairs,
+    kv::{KvPair, parse_kv_pairs},
     scanner::{AnnotationKind, scan},
 };
 use crate::{
     error::LatchError,
+    ir::{Field, Register},
     state::{FileId, Location, RegId, State},
 };
 
 mod error;
-mod ir;
 mod kv;
 mod scanner;
 #[cfg(test)]

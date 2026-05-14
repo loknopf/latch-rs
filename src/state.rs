@@ -1,6 +1,6 @@
 use slotmap::{SecondaryMap, SlotMap, new_key_type};
 
-use crate::parser::{Field, Register};
+use crate::ir::{Field, Register};
 
 new_key_type! { pub(crate) struct RegId; }
 new_key_type! { pub(crate) struct FieldId; }
@@ -45,10 +45,18 @@ impl State {
             .expect("Expecting a RegId to be valid")
     }
 
+    pub(crate) fn get_regs(&self) -> Vec<&Register> {
+        self.registers.iter().map(|(_, v)| v).collect()
+    }
+
     pub(crate) fn get_field(&self, field_id: FieldId) -> &Field {
         self.fields
             .get(field_id)
             .expect("Expecting a FieldId to be valid.")
+    }
+
+    pub(crate) fn get_fields(&self) -> Vec<&Field> {
+        self.fields.iter().map(|(_, v)| v).collect()
     }
 
     pub(crate) fn get_reg_loc(&self, reg_id: RegId) -> Option<&Location> {

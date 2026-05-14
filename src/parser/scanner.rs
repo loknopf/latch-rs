@@ -21,7 +21,7 @@ impl<'a> RawAnnotation<'a> {
 const REG_LINE: &'static str = "-- @reg";
 const FIELD_LINE: &'static str = "-- @field";
 
-pub(crate) fn scan(input: &str) -> Vec<RawAnnotation> {
+pub(crate) fn scan<'a>(input: &'a str) -> Vec<RawAnnotation<'a>> {
     let mut raw_annotations = Vec::new();
     let lines = input.lines();
     for (idx, line) in lines.enumerate() {

@@ -1,9 +1,13 @@
-use crate::parser::{LoweringError, ParseError};
+use crate::{
+    parser::{LoweringError, ParseError},
+    toml::TomlError,
+};
 
 #[derive(Debug)]
 pub(crate) enum LatchError {
     Parse(ParseError),
     Lowering(LoweringError),
+    Toml(TomlError),
 }
 
 impl From<ParseError> for LatchError {
