@@ -1,5 +1,5 @@
 ---
-source: src/toml.rs
+source: src/toml/test.rs
 expression: toml
 ---
 [status]
