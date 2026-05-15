@@ -35,9 +35,8 @@ pub(crate) fn parse(
     for ann in annotations {
         match parse_kv_pairs(ann.content) {
             Ok(kv) => lowerable.push((ann, kv)),
-            Err(e) => {
-                errors.push(ParseError::from_pest_error(e, ann.line, ann.pre_offset()).into())
-            }
+            Err(e) => errors
+                .push(ParseError::from_pest_error(e, ann.line, ann.pre_offset(), file_id).into()),
         }
     }
 
@@ -54,7 +53,7 @@ pub(crate) fn parse(
         match ann.kind {
             AnnotationKind::Reg => {
                 if let LowerState::Active { reg, line } = lower_state {
-                    if let Err(e) = empty_reg_guard(&reg, line) {
+                    if let Err(e) = empty_reg_guard(&reg, line, file_id) {
                         errors.push(e.into());
                     } else {
                         let reg_id = state.insert_reg(reg);
@@ -68,7 +67,7 @@ pub(crate) fn parse(
                         registers.push(reg_id);
                     }
                 }
-                lower_state = match Register::from_kv_values(&kv, ann.line) {
+                lower_state = match Register::from_kv_values(&kv, ann.line, file_id) {
                     Ok(reg) => LowerState::Active {
                         reg,
                         line: ann.line,
@@ -84,6 +83,7 @@ pub(crate) fn parse(
                     LoweringError {
                         message: "field annotation must follow a reg annotation".to_string(),
                         line: ann.line,
+                        file: file_id,
                     }
                     .into(),
                 ),
@@ -95,11 +95,12 @@ pub(crate) fn parse(
                                 message: "field annotation must immediately follow a reg or field annotation"
                                     .to_string(),
                                 line: ann.line,
+                                file: file_id
                             }
                             .into(),
                         );
                     } else {
-                        match Field::from_kv_values(&kv, ann.line) {
+                        match Field::from_kv_values(&kv, ann.line, file_id) {
                             Ok(f) => {
                                 let field_id = state.insert_field(f);
                                 state.add_field_loc(
@@ -123,7 +124,7 @@ pub(crate) fn parse(
     }
 
     if let LowerState::Active { reg, line } = lower_state {
-        if let Err(e) = empty_reg_guard(&reg, line) {
+        if let Err(e) = empty_reg_guard(&reg, line, file_id) {
             errors.push(e.into());
         } else {
             let reg_id = state.insert_reg(reg);
@@ -145,11 +146,12 @@ pub(crate) fn parse(
     }
 }
 
-fn empty_reg_guard(reg: &Register, line: usize) -> Result<(), LoweringError> {
+fn empty_reg_guard(reg: &Register, line: usize, file: FileId) -> Result<(), LoweringError> {
     if reg.get_fields().is_empty() {
         Err(LoweringError {
             message: "Registers require at least one @field.".into(),
             line,
+            file,
         })
     } else {
         Ok(())

@@ -1,4 +1,5 @@
 use crate::{
+    check::CheckError,
     parser::{LoweringError, ParseError},
     toml::TomlError,
 };
@@ -7,6 +8,7 @@ use crate::{
 pub(crate) enum LatchError {
     Parse(ParseError),
     Lowering(LoweringError),
+    Check(CheckError),
     Toml(TomlError),
 }
 
@@ -19,5 +21,11 @@ impl From<ParseError> for LatchError {
 impl From<LoweringError> for LatchError {
     fn from(e: LoweringError) -> Self {
         LatchError::Lowering(e)
+    }
+}
+
+impl From<CheckError> for LatchError {
+    fn from(e: CheckError) -> Self {
+        LatchError::Check(e)
     }
 }

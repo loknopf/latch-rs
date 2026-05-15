@@ -1,8 +1,9 @@
 use crate::{
-    check::error::CheckError,
     ir::{Field, Register},
     state::{FieldId, RegId, State},
 };
+
+pub(crate) use error::CheckError;
 
 mod error;
 #[cfg(test)]

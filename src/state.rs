@@ -1,3 +1,4 @@
+use codespan_reporting::files::{SimpleFile, SimpleFiles};
 use slotmap::{SecondaryMap, SlotMap, new_key_type};
 
 use crate::ir::{Field, Register};
@@ -20,6 +21,7 @@ pub(crate) struct State {
     fields: SlotMap<FieldId, Field>,
     reg_locations: SecondaryMap<RegId, Location>,
     field_locations: SecondaryMap<FieldId, Location>,
+    files: SimpleFiles<String, String>,
 }
 
 impl State {
@@ -65,5 +67,13 @@ impl State {
 
     pub(crate) fn get_field_loc(&self, field_id: FieldId) -> Option<&Location> {
         self.field_locations.get(field_id)
+    }
+
+    pub(crate) fn add_file(&mut self, name: String, source: String) -> FileId {
+        FileId(self.files.add(name, source) as u32)
+    }
+
+    pub(crate) fn get_file(&self, file: FileId) -> Option<&SimpleFile<String, String>> {
+        self.files.get(file.0 as usize).ok()
     }
 }

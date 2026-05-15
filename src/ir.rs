@@ -1,6 +1,6 @@
 use crate::{
     parser::{KvPair, LoweringError},
-    state::FieldId,
+    state::{FieldId, FileId},
     types::{Access, BitRange, Value},
 };
 
@@ -27,13 +27,18 @@ impl Register {
         }
     }
 
-    pub(crate) fn from_kv_values(values: &[KvPair], line: usize) -> Result<Self, LoweringError> {
+    pub(crate) fn from_kv_values(
+        values: &[KvPair],
+        line: usize,
+        file: FileId,
+    ) -> Result<Self, LoweringError> {
         let offset = require(
             values,
             |v| v.key == "offset",
             LoweringError {
                 message: "Require an offset key.".to_string(),
                 line: line,
+                file,
             },
         )?;
         let name = require(
@@ -42,6 +47,7 @@ impl Register {
             LoweringError {
                 message: "Require a name key.".to_string(),
                 line,
+                file,
             },
         )?;
 
@@ -50,6 +56,7 @@ impl Register {
                 v.as_string().ok_or(LoweringError {
                     message: "description must be a string value.".to_string(),
                     line,
+                    file,
                 })
             })
             .transpose()?
@@ -99,13 +106,18 @@ pub(crate) struct Field {
 }
 
 impl Field {
-    pub(crate) fn from_kv_values(values: &[KvPair], line: usize) -> Result<Self, LoweringError> {
+    pub(crate) fn from_kv_values(
+        values: &[KvPair],
+        line: usize,
+        file: FileId,
+    ) -> Result<Self, LoweringError> {
         let name = require(
             values,
             |v| v.key == "name",
             LoweringError {
                 message: "Fields require a name.".to_string(),
                 line,
+                file,
             },
         )?;
         let bits = require(
@@ -114,6 +126,7 @@ impl Field {
             LoweringError {
                 message: "Fields require a bits declaration.".to_string(),
                 line,
+                file,
             },
         )?;
         let access = allow(values, |v| v.key == "access").unwrap_or(&Value::Access(Access::RO));
@@ -122,6 +135,7 @@ impl Field {
                 v.as_string().ok_or(LoweringError {
                     message: "description must be a string value.".to_string(),
                     line,
+                    file,
                 })
             })
             .transpose()?
@@ -132,6 +146,7 @@ impl Field {
                 v.as_vec_string().ok_or(LoweringError {
                     message: "enum must be a quoted list of strings".to_string(),
                     line: line,
+                    file,
                 })
             })
             .transpose()?
