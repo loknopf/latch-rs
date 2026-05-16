@@ -1,4 +1,6 @@
-use codespan_reporting::files::{SimpleFile, SimpleFiles};
+use std::ops::Range;
+
+use codespan_reporting::files::{Files, SimpleFile, SimpleFiles};
 use slotmap::{SecondaryMap, SlotMap, new_key_type};
 
 use crate::ir::{Field, Register};
@@ -13,6 +15,15 @@ pub(crate) struct FileId(pub u32);
 pub(crate) struct Location {
     pub(crate) line: usize,
     pub(crate) file: FileId,
+}
+
+impl Location {
+    pub(crate) fn to_line_range(&self, state: &State) -> Range<usize> {
+        state
+            .get_files()
+            .line_range(self.file.0 as usize, self.line)
+            .unwrap()
+    }
 }
 
 #[derive(Debug, Default)]
@@ -75,5 +86,9 @@ impl State {
 
     pub(crate) fn get_file(&self, file: FileId) -> Option<&SimpleFile<String, String>> {
         self.files.get(file.0 as usize).ok()
+    }
+
+    pub(crate) fn get_files(&self) -> &SimpleFiles<String, String> {
+        &self.files
     }
 }

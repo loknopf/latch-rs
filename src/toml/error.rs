@@ -4,9 +4,9 @@ use crate::state::FileId;
 
 #[derive(Debug)]
 pub(crate) struct TomlError {
-    message: String,
-    span: Option<Range<usize>>,
-    file: Option<FileId>,
+    pub(crate) message: String,
+    pub(crate) span: Option<Range<usize>>,
+    pub(crate) file: Option<FileId>,
 }
 
 impl From<toml::de::Error> for TomlError {

@@ -6,10 +6,10 @@ use crate::{parser::Rule, state::FileId};
 
 #[derive(Debug)]
 pub(crate) struct ParseError {
-    message: String,
-    line: usize,
-    offset: Range<usize>,
-    file: FileId,
+    pub(crate) message: String,
+    pub(crate) line: usize,
+    pub(crate) offset: Range<usize>,
+    pub(crate) file: FileId,
 }
 
 impl ParseError {
