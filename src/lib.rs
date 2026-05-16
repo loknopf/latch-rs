@@ -1,10 +1,6 @@
 use std::path::PathBuf;
 
-use crate::{
-    check::{check_field_name_collision, check_field_overlap, check_reg_name_collisions},
-    error::LatchError,
-    state::State,
-};
+use crate::{check::check_registers, error::LatchError, state::State};
 
 mod check;
 mod diagnostics;
@@ -24,33 +20,14 @@ pub fn check(file: PathBuf) -> String {
     let content = content_res.unwrap();
     let mut state = State::default();
     let file = state.add_file(name, content.clone());
-    let parse_result = parser::parse(&mut state, &content, file);
+    let parse_result = parser::parse(&mut state, file);
     if let Err(errors) = parse_result {
         return render_to_codespan(errors, &state);
     }
     let regs = parse_result.unwrap();
-    let name_collisions = check_reg_name_collisions(&state, &regs);
-    if let Err(errors) = name_collisions {
-        return render_to_codespan(
-            errors.into_iter().map(|f| LatchError::from(f)).collect(),
-            &state,
-        );
-    }
-    for reg in regs.into_iter().map(|id| state.get_reg(id)) {
-        let overlap = check_field_overlap(&state, reg);
-        if let Err(errors) = overlap {
-            return render_to_codespan(
-                errors.into_iter().map(|f| LatchError::from(f)).collect(),
-                &state,
-            );
-        }
-        let field_name_collision = check_field_name_collision(&state, reg.get_fields());
-        if let Err(errors) = field_name_collision {
-            return render_to_codespan(
-                errors.into_iter().map(|f| LatchError::from(f)).collect(),
-                &state,
-            );
-        }
+    let check_errors = check_registers(&regs, &state);
+    if let Err(errs) = check_errors {
+        return render_to_codespan(errs, &state);
     }
     "Check done - 0 errors found".to_string()
 }

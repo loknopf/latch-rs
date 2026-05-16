@@ -23,27 +23,38 @@ mod tests;
 #[grammar = "annotation.pest"]
 struct LatchParser;
 
-pub(crate) fn parse(
-    state: &mut State,
-    input: &str,
-    file_id: FileId,
-) -> Result<Vec<RegId>, Vec<LatchError>> {
+enum LowerState {
+    Empty,
+    Active { reg: Register, line: usize },
+    Failed,
+}
+
+struct LoweredAnnotation {
+    line: usize,
+    kind: AnnotationKind,
+}
+
+pub(crate) fn parse(state: &mut State, file_id: FileId) -> Result<Vec<RegId>, Vec<LatchError>> {
+    let input = state
+        .get_file(file_id)
+        .expect("Expecting a file ti exist for a given FileId")
+        .source();
     let annotations = scan(input);
     let mut errors: Vec<LatchError> = Vec::new();
     let mut lowerable = Vec::new();
 
     for ann in annotations {
         match parse_kv_pairs(ann.content) {
-            Ok(kv) => lowerable.push((ann, kv)),
+            Ok(kv) => lowerable.push((
+                LoweredAnnotation {
+                    line: ann.line,
+                    kind: ann.kind,
+                },
+                kv,
+            )),
             Err(e) => errors
                 .push(ParseError::from_pest_error(e, ann.line, ann.pre_offset(), file_id).into()),
         }
-    }
-
-    enum LowerState {
-        Empty,
-        Active { reg: Register, line: usize },
-        Failed,
     }
 
     let mut registers: Vec<RegId> = Vec::new();

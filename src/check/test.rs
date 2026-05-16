@@ -4,7 +4,7 @@ use crate::{
         error::CheckError,
     },
     parser::parse,
-    state::{FileId, State},
+    state::State,
 };
 
 // ── field overlap ────────────────────────────────────────────────────────────
@@ -16,7 +16,8 @@ fn test_field_bits_overlap() {
 -- @field name=bx_3 bits=0:6\n\
 -- @field name=bx_6 bits=3:9";
     let mut state = State::default();
-    let reg_ids = parse(&mut state, src, FileId(0)).unwrap();
+    let id = state.add_file("test".to_string(), src.to_string());
+    let reg_ids = parse(&mut state, id).unwrap();
     let reg_0 = state.get_reg(reg_ids[0]);
     let errors = check_field_overlap(&state, reg_0).unwrap_err();
     assert_eq!(errors.len(), 1);
@@ -30,7 +31,8 @@ fn test_field_no_overlap() {
 -- @field name=lo bits=0:2\n\
 -- @field name=hi bits=4:7";
     let mut state = State::default();
-    let reg_ids = parse(&mut state, src, FileId(0)).unwrap();
+    let id = state.add_file("test".to_string(), src.to_string());
+    let reg_ids = parse(&mut state, id).unwrap();
     let reg = state.get_reg(reg_ids[0]);
     assert!(check_field_overlap(&state, reg).is_ok());
 }
@@ -43,7 +45,8 @@ fn test_field_boundary_touch_is_overlap() {
 -- @field name=f0 bits=0:3\n\
 -- @field name=f1 bits=3:6";
     let mut state = State::default();
-    let reg_ids = parse(&mut state, src, FileId(0)).unwrap();
+    let id = state.add_file("test".to_string(), src.to_string());
+    let reg_ids = parse(&mut state, id).unwrap();
     let reg = state.get_reg(reg_ids[0]);
     let errors = check_field_overlap(&state, reg).unwrap_err();
     assert_eq!(errors.len(), 1);
@@ -57,7 +60,8 @@ fn test_field_single_bit_inside_span() {
 -- @field name=f0 bits=5\n\
 -- @field name=f1 bits=3:7";
     let mut state = State::default();
-    let reg_ids = parse(&mut state, src, FileId(0)).unwrap();
+    let id = state.add_file("test".to_string(), src.to_string());
+    let reg_ids = parse(&mut state, id).unwrap();
     let reg = state.get_reg(reg_ids[0]);
     let errors = check_field_overlap(&state, reg).unwrap_err();
     assert_eq!(errors.len(), 1);
@@ -71,7 +75,8 @@ fn test_field_single_bit_outside_span() {
 -- @field name=f0 bits=9\n\
 -- @field name=f1 bits=3:7";
     let mut state = State::default();
-    let reg_ids = parse(&mut state, src, FileId(0)).unwrap();
+    let id = state.add_file("test".to_string(), src.to_string());
+    let reg_ids = parse(&mut state, id).unwrap();
     let reg = state.get_reg(reg_ids[0]);
     assert!(check_field_overlap(&state, reg).is_ok());
 }
@@ -85,7 +90,8 @@ fn test_field_multiple_overlap_pairs() {
 -- @field name=f1 bits=3:8\n\
 -- @field name=f2 bits=6:10";
     let mut state = State::default();
-    let reg_ids = parse(&mut state, src, FileId(0)).unwrap();
+    let id = state.add_file("test".to_string(), src.to_string());
+    let reg_ids = parse(&mut state, id).unwrap();
     let reg = state.get_reg(reg_ids[0]);
     let errors = check_field_overlap(&state, reg).unwrap_err();
     assert_eq!(errors.len(), 2);
@@ -102,7 +108,8 @@ fn test_field_single_field_no_overlap() {
 -- @reg name=r0 offset=0x00\n\
 -- @field name=f0 bits=0:7";
     let mut state = State::default();
-    let reg_ids = parse(&mut state, src, FileId(0)).unwrap();
+    let id = state.add_file("test".to_string(), src.to_string());
+    let reg_ids = parse(&mut state, id).unwrap();
     let reg = state.get_reg(reg_ids[0]);
     assert!(check_field_overlap(&state, reg).is_ok());
 }
@@ -116,9 +123,10 @@ fn test_field_name_collision() {
 -- @field name=dup bits=0:3\n\
 -- @field name=dup bits=5:7";
     let mut state = State::default();
-    let reg_ids = parse(&mut state, src, FileId(0)).unwrap();
+    let id = state.add_file("test".to_string(), src.to_string());
+    let reg_ids = parse(&mut state, id).unwrap();
     let reg = state.get_reg(reg_ids[0]);
-    let errors = check_field_name_collision(&state, reg.get_fields()).unwrap_err();
+    let errors = check_field_name_collision(&state, reg).unwrap_err();
     assert_eq!(errors.len(), 1);
     assert!(matches!(errors[0], CheckError::FieldNameCollision { .. }));
 }
@@ -130,9 +138,10 @@ fn test_field_name_no_collision() {
 -- @field name=ctrl bits=0:3\n\
 -- @field name=status bits=4:7";
     let mut state = State::default();
-    let reg_ids = parse(&mut state, src, FileId(0)).unwrap();
+    let id = state.add_file("test".to_string(), src.to_string());
+    let reg_ids = parse(&mut state, id).unwrap();
     let reg = state.get_reg(reg_ids[0]);
-    assert!(check_field_name_collision(&state, reg.get_fields()).is_ok());
+    assert!(check_field_name_collision(&state, reg).is_ok());
 }
 
 #[test]
@@ -141,9 +150,10 @@ fn test_field_name_single_field() {
 -- @reg name=r0 offset=0x00\n\
 -- @field name=only bits=0:7";
     let mut state = State::default();
-    let reg_ids = parse(&mut state, src, FileId(0)).unwrap();
+    let id = state.add_file("test".to_string(), src.to_string());
+    let reg_ids = parse(&mut state, id).unwrap();
     let reg = state.get_reg(reg_ids[0]);
-    assert!(check_field_name_collision(&state, reg.get_fields()).is_ok());
+    assert!(check_field_name_collision(&state, reg).is_ok());
 }
 
 #[test]
@@ -155,9 +165,10 @@ fn test_field_name_three_way_collision() {
 -- @field name=dup bits=3:5\n\
 -- @field name=dup bits=6:8";
     let mut state = State::default();
-    let reg_ids = parse(&mut state, src, FileId(0)).unwrap();
+    let id = state.add_file("test".to_string(), src.to_string());
+    let reg_ids = parse(&mut state, id).unwrap();
     let reg = state.get_reg(reg_ids[0]);
-    let errors = check_field_name_collision(&state, reg.get_fields()).unwrap_err();
+    let errors = check_field_name_collision(&state, reg).unwrap_err();
     assert_eq!(errors.len(), 3);
     assert!(
         errors
@@ -175,9 +186,10 @@ fn test_field_name_partial_collision() {
 -- @field name=f1 bits=3:5\n\
 -- @field name=f0 bits=6:8";
     let mut state = State::default();
-    let reg_ids = parse(&mut state, src, FileId(0)).unwrap();
+    let id = state.add_file("test".to_string(), src.to_string());
+    let reg_ids = parse(&mut state, id).unwrap();
     let reg = state.get_reg(reg_ids[0]);
-    let errors = check_field_name_collision(&state, reg.get_fields()).unwrap_err();
+    let errors = check_field_name_collision(&state, reg).unwrap_err();
     assert_eq!(errors.len(), 1);
     assert!(matches!(errors[0], CheckError::FieldNameCollision { .. }));
 }
@@ -190,9 +202,10 @@ fn test_field_name_collision_is_case_sensitive() {
 -- @field name=F0 bits=0:3\n\
 -- @field name=f0 bits=4:7";
     let mut state = State::default();
-    let reg_ids = parse(&mut state, src, FileId(0)).unwrap();
+    let id = state.add_file("test".to_string(), src.to_string());
+    let reg_ids = parse(&mut state, id).unwrap();
     let reg = state.get_reg(reg_ids[0]);
-    assert!(check_field_name_collision(&state, reg.get_fields()).is_ok());
+    assert!(check_field_name_collision(&state, reg).is_ok());
 }
 
 // ── register name collisions ─────────────────────────────────────────────────
@@ -206,7 +219,8 @@ signal my_signal: std_logic_vector(19);\n\
 -- @reg name=tx_0 offset=0x03\n\
 -- @field name=bx_3 bits=0:6";
     let mut state = State::default();
-    let reg_ids = parse(&mut state, src, FileId(0)).unwrap();
+    let id = state.add_file("test".to_string(), src.to_string());
+    let reg_ids = parse(&mut state, id).unwrap();
     let errors = check_reg_name_collisions(&state, &reg_ids).unwrap_err();
     assert_eq!(errors.len(), 1);
     assert!(matches!(errors[0], CheckError::RegNameCollision { .. }));
@@ -221,7 +235,8 @@ signal x: std_logic;\n\
 -- @reg name=r1 offset=0x04\n\
 -- @field name=f1 bits=0:3";
     let mut state = State::default();
-    let reg_ids = parse(&mut state, src, FileId(0)).unwrap();
+    let id = state.add_file("test".to_string(), src.to_string());
+    let reg_ids = parse(&mut state, id).unwrap();
     assert!(check_reg_name_collisions(&state, &reg_ids).is_ok());
 }
 
@@ -231,7 +246,8 @@ fn test_reg_name_single_reg() {
 -- @reg name=only offset=0x00\n\
 -- @field name=f0 bits=0:3";
     let mut state = State::default();
-    let reg_ids = parse(&mut state, src, FileId(0)).unwrap();
+    let id = state.add_file("test".to_string(), src.to_string());
+    let reg_ids = parse(&mut state, id).unwrap();
     assert_eq!(reg_ids.len(), 1);
     assert!(check_reg_name_collisions(&state, &reg_ids).is_ok());
 }
@@ -249,7 +265,8 @@ signal b: std_logic;\n\
 -- @reg name=dup offset=0x08\n\
 -- @field name=f2 bits=0:3";
     let mut state = State::default();
-    let reg_ids = parse(&mut state, src, FileId(0)).unwrap();
+    let id = state.add_file("test".to_string(), src.to_string());
+    let reg_ids = parse(&mut state, id).unwrap();
     assert_eq!(reg_ids.len(), 3);
     let errors = check_reg_name_collisions(&state, &reg_ids).unwrap_err();
     assert_eq!(errors.len(), 3);
@@ -273,7 +290,8 @@ signal b: std_logic;\n\
 -- @reg name=r0 offset=0x08\n\
 -- @field name=f2 bits=0:3";
     let mut state = State::default();
-    let reg_ids = parse(&mut state, src, FileId(0)).unwrap();
+    let id = state.add_file("test".to_string(), src.to_string());
+    let reg_ids = parse(&mut state, id).unwrap();
     assert_eq!(reg_ids.len(), 3);
     let errors = check_reg_name_collisions(&state, &reg_ids).unwrap_err();
     assert_eq!(errors.len(), 1);
@@ -290,6 +308,7 @@ signal x: std_logic;\n\
 -- @reg name=tx_0 offset=0x04\n\
 -- @field name=f1 bits=0:3";
     let mut state = State::default();
-    let reg_ids = parse(&mut state, src, FileId(0)).unwrap();
+    let id = state.add_file("test".to_string(), src.to_string());
+    let reg_ids = parse(&mut state, id).unwrap();
     assert!(check_reg_name_collisions(&state, &reg_ids).is_ok());
 }

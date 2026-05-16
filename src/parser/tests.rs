@@ -1,6 +1,6 @@
 use crate::{
     ir::{Field, Register},
-    state::{FileId, State},
+    state::State,
     types::{Access, BitRange},
 };
 
@@ -9,7 +9,8 @@ use super::parse;
 // helpers
 
 fn ok_registers(state: &mut State, input: &str) -> Vec<Register> {
-    parse(state, input, FileId(0))
+    let id = state.add_file("ok_reg".to_string(), input.to_string());
+    parse(state, id)
         .unwrap_or_else(|e| panic!("expected successful parse, got {} errors", e.len()))
         .iter()
         .map(|reg| state.get_reg(*reg))
@@ -19,7 +20,8 @@ fn ok_registers(state: &mut State, input: &str) -> Vec<Register> {
 
 fn err_count(input: &str) -> usize {
     let mut state = State::default();
-    match parse(&mut state, input, FileId(0)) {
+    let id = state.add_file("err_count".to_string(), input.to_string());
+    match parse(&mut state, id) {
         Ok(_) => panic!("expected parse errors but got Ok"),
         Err(e) => e.len(),
     }
@@ -95,7 +97,8 @@ fn single_register_exists_in_source_map() {
 -- @field bits=0 name=tx_en access=RW\n\
 -- @field bits=1 name=rx_en access=RO\n";
     let mut state = State::default();
-    let reg_ids = parse(&mut state, src, FileId(0)).unwrap();
+    let id = state.add_file("single_reg_exists".to_string(), src.to_string());
+    let reg_ids = parse(&mut state, id).unwrap();
     let field_ids = state.get_reg(reg_ids[0]).get_fields().clone();
     assert_eq!(reg_ids.len(), 1);
     assert_eq!(field_ids.len(), 2);
@@ -113,7 +116,8 @@ fn multiple_registers_exist_in_source_map() {
 -- @field bits=0:6 name=tx_out access=WO\n\
 -- @field bits=7 name=rx_in access=RW\n";
     let mut state = State::default();
-    let reg_ids = parse(&mut state, src, FileId(0)).unwrap();
+    let id = state.add_file("multiple_registers_source_map".to_string(), src.to_string());
+    let reg_ids = parse(&mut state, id).unwrap();
     let reg1_field_ids = state.get_reg(reg_ids[1]).get_fields().clone();
     assert_eq!(reg_ids.len(), 2);
     assert_eq!(state.get_reg_loc(reg_ids[0]).map(|l| l.line), Some(0));
@@ -133,25 +137,33 @@ fn multiple_registers_exist_in_source_map() {
 #[test]
 fn single_register_no_fields() {
     let src = "-- @reg offset=0x00 name=ctrl\n";
-    assert!(parse(&mut State::default(), src, FileId(0)).is_err());
+    let mut state = State::default();
+    let id = state.add_file("test".to_string(), src.to_string());
+    assert!(parse(&mut state, id).is_err());
 }
 
 #[test]
 fn field_without_preceding_register_is_error() {
     let src = "-- @field bits=0 name=en access=RW\n";
-    assert!(parse(&mut State::default(), src, FileId(0)).is_err());
+    let mut state = State::default();
+    let id = state.add_file("test".to_string(), src.to_string());
+    assert!(parse(&mut state, id).is_err());
 }
 
 #[test]
 fn register_missing_offset_is_error() {
     let src = "-- @reg name=ctrl\n";
-    assert!(parse(&mut State::default(), src, FileId(0)).is_err());
+    let mut state = State::default();
+    let id = state.add_file("test".to_string(), src.to_string());
+    assert!(parse(&mut state, id).is_err());
 }
 
 #[test]
 fn register_missing_name_is_error() {
     let src = "-- @reg offset=0x00\n";
-    assert!(parse(&mut State::default(), src, FileId(0)).is_err());
+    let mut state = State::default();
+    let id = state.add_file("test".to_string(), src.to_string());
+    assert!(parse(&mut state, id).is_err());
 }
 
 #[test]
@@ -159,7 +171,9 @@ fn field_missing_name_is_error() {
     let src = "\
 -- @reg offset=0x00 name=ctrl\n\
 -- @field bits=0 access=RW\n";
-    assert!(parse(&mut State::default(), src, FileId(0)).is_err());
+    let mut state = State::default();
+    let id = state.add_file("test".to_string(), src.to_string());
+    assert!(parse(&mut state, id).is_err());
 }
 
 #[test]
@@ -167,7 +181,9 @@ fn field_missing_bits_is_error() {
     let src = "\
 -- @reg offset=0x00 name=ctrl\n\
 -- @field name=en access=RW\n";
-    assert!(parse(&mut State::default(), src, FileId(0)).is_err());
+    let mut state = State::default();
+    let id = state.add_file("test".to_string(), src.to_string());
+    assert!(parse(&mut state, id).is_err());
 }
 
 #[test]
@@ -186,5 +202,7 @@ signal s_foo : std_logic;\n\
 -- @reg offset=0x00 name=ctrl\n\
 -- some unrelated comment\n\
 -- @field bits=0 name=en access=RW\n";
-    assert!(parse(&mut State::default(), src, FileId(0)).is_err());
+    let mut state = State::default();
+    let id = state.add_file("test".to_string(), src.to_string());
+    assert!(parse(&mut state, id).is_err());
 }

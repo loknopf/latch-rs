@@ -6,7 +6,8 @@ use crate::{
 
 fn state_from_src(src: &str) -> State {
     let mut state = State::default();
-    parse(&mut state, src, FileId(0)).expect("annotation parse failed");
+    let id = state.add_file("state".to_string(), src.to_string());
+    parse(&mut state, id).expect("annotation parse failed");
     state
 }
 

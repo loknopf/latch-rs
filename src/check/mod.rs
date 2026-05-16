@@ -1,5 +1,6 @@
 use crate::{
-    ir::{Field, Register},
+    error::LatchError,
+    ir::Register,
     state::{FieldId, RegId, State},
 };
 
@@ -9,7 +10,27 @@ mod error;
 #[cfg(test)]
 mod test;
 
-pub(crate) fn check_field_overlap(state: &State, reg: &Register) -> Result<(), Vec<CheckError>> {
+pub(crate) fn check_registers(regs: &[RegId], state: &State) -> Result<(), Vec<LatchError>> {
+    let mut accum: Vec<CheckError> = check_reg_name_collisions(state, regs)
+        .err()
+        .unwrap_or_default();
+    for r_id in regs {
+        let reg = state.get_reg(*r_id);
+        if let Err(mut errs) = check_field_overlap(state, reg) {
+            accum.append(&mut errs);
+        }
+        if let Err(mut errs) = check_field_name_collision(state, reg) {
+            accum.append(&mut errs);
+        }
+    }
+    if !accum.is_empty() {
+        Err(accum.into_iter().map(|e| LatchError::Check(e)).collect())
+    } else {
+        Ok(())
+    }
+}
+
+fn check_field_overlap(state: &State, reg: &Register) -> Result<(), Vec<CheckError>> {
     let pairs: Vec<(&FieldId, &FieldId)> = reg
         .get_fields()
         .iter()
@@ -38,10 +59,7 @@ pub(crate) fn check_field_overlap(state: &State, reg: &Register) -> Result<(), V
     }
 }
 
-pub(crate) fn check_reg_name_collisions(
-    state: &State,
-    reg_ids: &[RegId],
-) -> Result<(), Vec<CheckError>> {
+fn check_reg_name_collisions(state: &State, reg_ids: &[RegId]) -> Result<(), Vec<CheckError>> {
     let pairs: Vec<(RegId, RegId)> = reg_ids
         .iter()
         .enumerate()
@@ -66,10 +84,8 @@ pub(crate) fn check_reg_name_collisions(
     }
 }
 
-pub(crate) fn check_field_name_collision(
-    state: &State,
-    fields: &[FieldId],
-) -> Result<(), Vec<CheckError>> {
+fn check_field_name_collision(state: &State, reg: &Register) -> Result<(), Vec<CheckError>> {
+    let fields = reg.get_fields();
     let pairs: Vec<(FieldId, FieldId)> = fields
         .iter()
         .enumerate()
