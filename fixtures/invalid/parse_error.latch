@@ -1,0 +1,2 @@
+-- @reg offset=0x00
+-- @field bits=0 name=en access=RW

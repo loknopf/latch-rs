@@ -1,0 +1,11 @@
+---
+source: tests/diagnostics.rs
+expression: output
+---
+error: Two field names are colliding within the same @reg block!
+  ┌─ fixtures/invalid/field_name_collision.latch:3:1
+  │
+2 │ -- @field bits=0 name=enable access=RW
+  │ -------------------------------------- first defined here
+3 │ -- @field bits=1 name=enable access=RO
+  │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this fields name collides with another field in the same register

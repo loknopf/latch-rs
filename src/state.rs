@@ -19,10 +19,11 @@ pub(crate) struct Location {
 
 impl Location {
     pub(crate) fn to_line_range(&self, state: &State) -> Range<usize> {
-        state
+        let r = state
             .get_files()
             .line_range(self.file.0 as usize, self.line)
-            .unwrap()
+            .unwrap();
+        r.start..r.end.saturating_sub(1)
     }
 }
 

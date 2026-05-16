@@ -1,0 +1,3 @@
+-- @reg offset=0x04 name=ctrl
+-- @field bits=0 name=enable access=RW
+-- @field bits=1 name=enable access=RO

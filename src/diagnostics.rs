@@ -11,7 +11,7 @@ use crate::{
     toml::TomlError,
 };
 
-pub(crate) fn to_diagnostic(error: LatchError, state: &State) -> Diagnostic<u32> {
+pub(crate) fn to_diagnostic(error: LatchError, state: &State) -> Diagnostic<usize> {
     match error {
         LatchError::Parse(e) => parse_diagnostic(e, state),
         LatchError::Lowering(e) => lowering_diagnostic(e, state),
@@ -21,8 +21,8 @@ pub(crate) fn to_diagnostic(error: LatchError, state: &State) -> Diagnostic<u32>
     }
 }
 
-fn parse_diagnostic(error: ParseError, state: &State) -> Diagnostic<u32> {
-    let file_id = error.file.0;
+fn parse_diagnostic(error: ParseError, state: &State) -> Diagnostic<usize> {
+    let file_id: usize = error.file.0 as usize;
     let line_range = state
         .get_files()
         .line_range(file_id as usize, error.line)
@@ -34,18 +34,19 @@ fn parse_diagnostic(error: ParseError, state: &State) -> Diagnostic<u32> {
         .with_label(Label::primary(file_id, abs_start..abs_end))
 }
 
-fn lowering_diagnostic(error: LoweringError, state: &State) -> Diagnostic<u32> {
-    let file_id = error.file.0;
-    let line_range = state
+fn lowering_diagnostic(error: LoweringError, state: &State) -> Diagnostic<usize> {
+    let file_id = error.file.0 as usize;
+    let r = state
         .get_files()
         .line_range(file_id as usize, error.line)
         .unwrap();
+    let line_span = r.start..r.end.saturating_sub(1);
     Diagnostic::error()
         .with_message(&error.message)
-        .with_label(Label::primary(file_id, line_range).with_message("lowering error occured here"))
+        .with_label(Label::primary(file_id, line_span).with_message("lowering error occurred here"))
 }
 
-fn check_diagnostic(error: CheckError, state: &State) -> Diagnostic<u32> {
+fn check_diagnostic(error: CheckError, state: &State) -> Diagnostic<usize> {
     match error {
         CheckError::FieldNameCollision { first, other } => {
             let first_loc = state
@@ -59,11 +60,13 @@ fn check_diagnostic(error: CheckError, state: &State) -> Diagnostic<u32> {
             let other_span = other_loc.to_line_range(state);
             Diagnostic::error()
                 .with_message(message)
-                .with_label(Label::primary(other_loc.file.0, other_span).with_message(
-                    "this fields name collides with another field in the same register",
-                ))
                 .with_label(
-                    Label::secondary(first_loc.file.0, first_span)
+                    Label::primary(other_loc.file.0 as usize, other_span).with_message(
+                        "this fields name collides with another field in the same register",
+                    ),
+                )
+                .with_label(
+                    Label::secondary(first_loc.file.0 as usize, first_span)
                         .with_message("first defined here"),
                 )
         }
@@ -79,12 +82,12 @@ fn check_diagnostic(error: CheckError, state: &State) -> Diagnostic<u32> {
             Diagnostic::error()
                 .with_message("Two fields have overlapping bit ranges!")
                 .with_label(
-                    Label::primary(first_loc.file.0, first_span)
+                    Label::primary(first_loc.file.0 as usize, first_span)
                         .with_message("overlap encountered here"),
                 )
                 .with_label(
-                    Label::secondary(other_loc.file.0, other_span)
-                        .with_message("overlap encountered here"),
+                    Label::secondary(other_loc.file.0 as usize, other_span)
+                        .with_message("overlaps with this field"),
                 )
         }
         CheckError::RegNameCollision { first, other } => {
@@ -99,21 +102,23 @@ fn check_diagnostic(error: CheckError, state: &State) -> Diagnostic<u32> {
             Diagnostic::error()
                 .with_message("Two registers have the same name!")
                 .with_label(
-                    Label::primary(other_loc.file.0, other_span)
+                    Label::primary(other_loc.file.0 as usize, other_span)
                         .with_message("Name collision encountered here"),
                 )
                 .with_label(
-                    Label::secondary(first_loc.file.0, first_span)
+                    Label::secondary(first_loc.file.0 as usize, first_span)
                         .with_message("first declared here"),
                 )
         }
     }
 }
 
-fn toml_diagnostic(error: TomlError, _state: &State) -> Diagnostic<u32> {
+fn toml_diagnostic(error: TomlError, _state: &State) -> Diagnostic<usize> {
     let mut d = Diagnostic::error().with_message(&error.message);
     if let (Some(file), Some(span)) = (error.file, error.span) {
-        d = d.with_label(Label::primary(file.0, span).with_message("TOML error occoured here"));
+        d = d.with_label(
+            Label::primary(file.0 as usize, span).with_message("TOML error occourred here"),
+        );
     }
     d
 }

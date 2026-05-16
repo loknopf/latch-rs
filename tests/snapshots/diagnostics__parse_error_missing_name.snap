@@ -1,0 +1,9 @@
+---
+source: tests/diagnostics.rs
+expression: output
+---
+error: Require a name key.
+  ┌─ fixtures/invalid/parse_error.latch:1:1
+  │
+1 │ -- @reg offset=0x00
+  │ ^^^^^^^^^^^^^^^^^^^ lowering error occurred here
