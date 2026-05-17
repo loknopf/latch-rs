@@ -1,0 +1,11 @@
+-- @reg offset=0x00 name=ctrl
+
+-- expected: error
+-- error type: LoweringError
+-- error message: "Registers require at least one @field."
+-- error location: line 1 (the `@reg` annotation, when the next `@reg` or EOF
+--                 closes the block)
+-- reason: a register with no fields has nothing to generate — no accessors,
+--         no bitfield struct. The `empty_reg_guard` in parser/mod.rs fires
+--         both when another `@reg` starts and when input ends with an active
+--         empty register.

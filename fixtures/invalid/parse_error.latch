@@ -1,2 +1,11 @@
 -- @reg offset=0x00
 -- @field bits=0 name=en access=RW
+
+-- expected: error
+-- error type: LoweringError
+-- error message: "Require a name key."
+-- error location: line 1 (the `@reg` annotation)
+-- reason: the `@reg` annotation is missing the required `name=` key. The KV
+--         pairs parse cleanly via pest, but lowering to `Register` requires
+--         `name`, so the failure is a LoweringError rather than a true
+--         pest-level ParseError. (See malformed_kv_pair.latch for that case.)

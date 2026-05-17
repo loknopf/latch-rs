@@ -1,0 +1,9 @@
+-- @reg offset=0x20 name=ctrl description=MainControlRegister
+-- @field bits=0 name=enable access=RW description=EnablesThePeripheral
+-- @field bits=1:2 name=mode access=RW enum="Idle,Single,Continuous,Reserved"
+
+-- expected: valid
+-- reason: optional `description` and `enum` keys are accepted on both `@reg`
+--         and `@field`. `description` is a bare value (no spaces — the
+--         grammar's `bare_value` terminates at whitespace) and `enum` is a
+--         quoted comma-separated list of alphanumeric identifiers.

@@ -1,0 +1,9 @@
+-- @reg offset=0x10 name=mixed
+-- @field bits=0 name=read_only access=RO
+-- @field bits=1 name=write_only access=WO
+-- @field bits=2 name=read_write access=RW
+
+-- expected: valid
+-- reason: covers each of the three permitted access modes (RO, WO, RW). The
+--         grammar's `access` rule is the only place these tokens are accepted,
+--         so this guards against accidentally dropping one of them.

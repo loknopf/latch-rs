@@ -1,0 +1,20 @@
+-- VHDL register-file declarations.
+-- The scanner must ignore everything that does not start with `-- @reg`
+-- or `-- @field`, so signal declarations and prose comments belong here.
+
+signal s_control : std_logic_vector(31 downto 0);
+-- @reg offset=0x00 name=control
+-- @field bits=0 name=tx_en access=RW
+-- @field bits=1 name=rx_en access=RW
+
+signal s_status  : std_logic_vector(31 downto 0);
+-- @reg offset=0x04 name=status
+-- @field bits=0 name=fifo_full access=RO
+-- @field bits=1 name=parity_err access=RO
+
+-- expected: valid
+-- reason: non-annotation lines (HDL signal declarations, blank lines, prose
+--         comments) appearing BETWEEN register blocks are ignored. Note: such
+--         lines may NOT appear WITHIN a block, as the lowering pass enforces
+--         that every `@field` is on the line immediately after its `@reg` or
+--         previous `@field`.

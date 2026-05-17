@@ -1,0 +1,10 @@
+-- @reg offset=0x00 name=ctrl
+-- @field name=enable access=RW
+
+-- expected: error
+-- error type: LoweringError
+-- error message: "Fields require a bits declaration."
+-- error location: line 2 (the `@field` annotation)
+-- reason: a field with no `bits=` has no position inside its register, so
+--         lowering cannot construct a `Field`. The KV pair parser accepts the
+--         line (name and access are valid keys), but lowering rejects it.

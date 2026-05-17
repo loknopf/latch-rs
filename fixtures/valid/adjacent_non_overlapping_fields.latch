@@ -1,0 +1,10 @@
+-- @reg offset=0x00 name=ctrl
+-- @field bits=0:3 name=low_nibble access=RW
+-- @field bits=4:7 name=high_nibble access=RW
+-- @field bits=8 name=flag access=RW
+
+-- expected: valid
+-- reason: bit ranges that are adjacent but do not share any bit are allowed.
+--         Edge case for the overlap check: bit 3 and bit 4 touch numerically
+--         but the spans `0:3` and `4:7` are disjoint. Compare with
+--         invalid/boundary_overlap.latch where `0:3` and `3:6` DO share bit 3.

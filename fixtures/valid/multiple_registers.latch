@@ -1,0 +1,11 @@
+-- @reg offset=0x00 name=ctrl
+-- @field bits=0 name=enable access=RW
+-- @field bits=1:3 name=mode access=RW
+-- @reg offset=0x04 name=status
+-- @field bits=0 name=ready access=RO
+-- @field bits=1 name=busy access=RO
+
+-- expected: valid
+-- reason: two consecutive `@reg` blocks each with multiple fields. Exercises
+--         register grouping — fields must attach to the most recently opened
+--         register, and reopening with a new `@reg` must flush the previous one.

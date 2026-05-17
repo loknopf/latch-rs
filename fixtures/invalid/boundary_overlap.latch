@@ -1,0 +1,13 @@
+-- @reg offset=0x00 name=ctrl
+-- @field bits=0:3 name=low access=RW
+-- @field bits=3:6 name=high access=RW
+
+-- expected: error
+-- error type: CheckError::FieldOverlap
+-- error message: "Two fields have overlapping bit ranges!"
+-- error location: line 2 (`low`, 0:3) with secondary label on line 3
+--                 (`high`, 3:6)
+-- reason: edge case for the overlap predicate — the spans share exactly one
+--         bit (bit 3). Bit ranges are inclusive on both ends, so this counts
+--         as overlap. Compare with valid/adjacent_non_overlapping_fields.latch
+--         (0:3 and 4:7), which is permitted.

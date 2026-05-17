@@ -1,0 +1,10 @@
+-- @reg offset=0x00 name=ctrl
+-- @field bits=0 access=RW
+
+-- expected: error
+-- error type: LoweringError
+-- error message: "Fields require a name."
+-- error location: line 2 (the `@field` annotation)
+-- reason: every field needs a name — it becomes the identifier for the
+--         generated accessor in each backend. The KV pair parses fine; the
+--         requirement is enforced during lowering.

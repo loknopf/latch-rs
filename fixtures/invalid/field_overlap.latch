@@ -1,3 +1,12 @@
 -- @reg offset=0x08 name=status
 -- @field bits=0:3 name=mode access=RW
 -- @field bits=2:5 name=flags access=RO
+
+-- expected: error
+-- error type: CheckError::FieldOverlap
+-- error message: "Two fields have overlapping bit ranges!"
+-- error location: line 2 (`mode`, 0:3) with secondary label on line 3
+--                 (`flags`, 2:5)
+-- reason: spans `0:3` and `2:5` share bits 2 and 3. Generated bitfield
+--         accessors would clobber each other, so any shared bit between
+--         fields in the same register is rejected.

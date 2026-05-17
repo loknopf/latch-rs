@@ -1,0 +1,13 @@
+-- @reg offset=0x00 name=ctrl
+
+-- @field bits=0 name=enable access=RW
+
+-- expected: error
+-- error type: LoweringError (plus a second error — see below)
+-- error message: "field annotation must immediately follow a reg or field annotation"
+-- error location: line 3 (the non-adjacent `@field`)
+-- reason: fields must sit on the line directly after their `@reg` (or the
+--         previous `@field`). The blank line on row 2 breaks contiguity. A
+--         second error is then emitted because the `@reg` ends up with zero
+--         fields ("Registers require at least one @field."), since the
+--         orphaned field never attaches.

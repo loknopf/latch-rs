@@ -1,0 +1,7 @@
+-- @reg offset=0x00 name=ctrl
+-- @field bits=0 name=enable access=RW
+
+-- expected: valid
+-- reason: baseline happy-path — one register with a single RW field. This is
+--         the smallest input that must succeed; if this regresses, the whole
+--         pipeline is broken.

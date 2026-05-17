@@ -1,0 +1,11 @@
+-- @reg name=ctrl
+-- @field bits=0 name=enable access=RW
+
+-- expected: error
+-- error type: LoweringError
+-- error message: "Require an offset key."
+-- error location: line 1 (the `@reg` annotation)
+-- reason: every `@reg` must carry an `offset=` key — the offset is what
+--         distinguishes registers within a peripheral and feeds directly into
+--         generated read/write accessors. Without it, codegen has nothing to
+--         emit.

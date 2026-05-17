@@ -1,0 +1,9 @@
+-- @field bits=0 name=enable access=RW
+
+-- expected: error
+-- error type: LoweringError
+-- error message: "field annotation must follow a reg annotation"
+-- error location: line 1 (the orphan `@field`)
+-- reason: a `@field` only has meaning in the context of an enclosing `@reg`.
+--         Encountering one while the lower state is still `Empty` (no register
+--         opened yet) is a hard error.

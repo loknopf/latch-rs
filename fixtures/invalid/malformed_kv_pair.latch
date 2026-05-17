@@ -1,0 +1,13 @@
+-- @reg offset=0x00 name=
+-- @field bits=0 name=enable access=RW
+
+-- expected: error
+-- error type: ParseError (pest-level)
+-- error message: pest grammar mismatch — `kv_pair` requires a non-empty
+--                value after `=`, but `name=` has nothing before the line end.
+-- error location: line 1, at the column of the empty value
+-- reason: distinguishes a true grammar-level parse failure from a
+--         LoweringError. The pest grammar's `value` rule requires at least
+--         one of access / hex / bin / bit_range / quoted_csv / bare_value;
+--         none of them match an empty string, so parsing fails before
+--         lowering even runs for this annotation.

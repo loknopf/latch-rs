@@ -1,0 +1,15 @@
+-- @reg offset=0x00 name=ctrl
+-- @field bits=0 name=enable access=RW
+signal a : std_logic;
+-- @reg offset=0x10 name=ctrl
+-- @field bits=0 name=ready access=RO
+
+-- expected: error
+-- error type: CheckError::RegNameCollision
+-- error message: "Two registers have the same name!"
+-- error location: line 4 (the second `ctrl`) with secondary label on line 1
+-- reason: two registers in the same file share the name `ctrl` (despite
+--         having different offsets). Generated peripheral structs use the
+--         register name as a method/identifier root, so duplicates collide
+--         in the output. Note: the offsets differ, which is allowed —
+--         what's rejected is the name clash.

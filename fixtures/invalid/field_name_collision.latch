@@ -1,3 +1,12 @@
 -- @reg offset=0x04 name=ctrl
 -- @field bits=0 name=enable access=RW
 -- @field bits=1 name=enable access=RO
+
+-- expected: error
+-- error type: CheckError::FieldNameCollision
+-- error message: "Two field names are colliding within the same @reg block!"
+-- error location: line 3 (the second `enable`), with secondary label on line 2
+-- reason: two `@field`s within the same `@reg` share the name `enable`. Names
+--         must be unique within a register so generated accessors do not clash.
+--         Note: collision check is case-sensitive — `Enable` vs `enable` would
+--         be permitted.
