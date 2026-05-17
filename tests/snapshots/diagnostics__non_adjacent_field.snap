@@ -1,0 +1,15 @@
+---
+source: tests/diagnostics.rs
+expression: output
+---
+error: field annotation must immediately follow a reg or field annotation
+  ┌─ fixtures/invalid/non_adjacent_field.latch:3:1
+  │
+3 │ -- @field bits=0 name=enable access=RW
+  │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lowering error occurred here
+
+error: Registers require at least one @field.
+  ┌─ fixtures/invalid/non_adjacent_field.latch:1:1
+  │
+1 │ -- @reg offset=0x00 name=ctrl
+  │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lowering error occurred here

@@ -1,0 +1,9 @@
+---
+source: tests/diagnostics.rs
+expression: output
+---
+error: field annotation must follow a reg annotation
+  ┌─ fixtures/invalid/orphan_field.latch:1:1
+  │
+1 │ -- @field bits=0 name=enable access=RW
+  │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lowering error occurred here

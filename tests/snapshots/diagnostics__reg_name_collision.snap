@@ -1,0 +1,12 @@
+---
+source: tests/diagnostics.rs
+expression: output
+---
+error: Two registers have the same name!
+  ┌─ fixtures/invalid/reg_name_collision.latch:4:1
+  │
+1 │ -- @reg offset=0x00 name=ctrl
+  │ ----------------------------- first declared here
+  ·
+4 │ -- @reg offset=0x10 name=ctrl
+  │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Name collision encountered here

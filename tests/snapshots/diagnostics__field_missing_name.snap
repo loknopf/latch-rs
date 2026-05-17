@@ -1,0 +1,9 @@
+---
+source: tests/diagnostics.rs
+expression: output
+---
+error: Fields require a name.
+  ┌─ fixtures/invalid/field_missing_name.latch:2:1
+  │
+2 │ -- @field bits=0 access=RW
+  │ ^^^^^^^^^^^^^^^^^^^^^^^^^^ lowering error occurred here

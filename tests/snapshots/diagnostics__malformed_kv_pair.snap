@@ -1,0 +1,9 @@
+---
+source: tests/diagnostics.rs
+expression: output
+---
+error: expected value
+  ┌─ fixtures/invalid/malformed_kv_pair.latch:1:26
+  │
+1 │ -- @reg offset=0x00 name=
+  │                          ^

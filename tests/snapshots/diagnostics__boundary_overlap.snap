@@ -1,0 +1,11 @@
+---
+source: tests/diagnostics.rs
+expression: output
+---
+error: Two fields have overlapping bit ranges!
+  ┌─ fixtures/invalid/boundary_overlap.latch:2:1
+  │
+2 │ -- @field bits=0:3 name=low access=RW
+  │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overlap encountered here
+3 │ -- @field bits=3:6 name=high access=RW
+  │ -------------------------------------- overlaps with this field

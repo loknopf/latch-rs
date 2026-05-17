@@ -1,0 +1,9 @@
+---
+source: tests/diagnostics.rs
+expression: output
+---
+error: Fields require a bits declaration.
+  ┌─ fixtures/invalid/field_missing_bits.latch:2:1
+  │
+2 │ -- @field name=enable access=RW
+  │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lowering error occurred here

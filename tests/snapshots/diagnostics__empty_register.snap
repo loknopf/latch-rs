@@ -1,0 +1,9 @@
+---
+source: tests/diagnostics.rs
+expression: output
+---
+error: Registers require at least one @field.
+  ┌─ fixtures/invalid/empty_register.latch:1:1
+  │
+1 │ -- @reg offset=0x00 name=ctrl
+  │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lowering error occurred here
