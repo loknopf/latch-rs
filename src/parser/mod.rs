@@ -10,11 +10,13 @@ pub(crate) use crate::parser::{
 use crate::{
     error::LatchError,
     ir::{Field, Register},
+    parser::lower::LowerCtx,
     state::{FileId, Location, RegId, State},
 };
 
 mod error;
 mod kv;
+mod lower;
 mod scanner;
 #[cfg(test)]
 mod tests;
@@ -25,7 +27,11 @@ struct LatchParser;
 
 enum LowerState {
     Empty,
-    Active { reg: Register, line: usize },
+    Active {
+        reg: Register,
+        line: usize,
+        failed_fields: usize,
+    },
     Failed,
 }
 
@@ -35,136 +41,32 @@ struct LoweredAnnotation {
 }
 
 pub(crate) fn parse(state: &mut State, file_id: FileId) -> Result<Vec<RegId>, Vec<LatchError>> {
-    let input = state
-        .get_file(file_id)
-        .expect("Expecting a file ti exist for a given FileId")
-        .source();
-    let annotations = scan(input);
-    let mut errors: Vec<LatchError> = Vec::new();
-    let mut lowerable = Vec::new();
+    //This block scopes the lifetime of the immutable borrow of the &str inside the `RawAnnotation`
+    let parsed: Vec<_> = {
+        let input = state
+            .get_file(file_id)
+            .expect("Expecting a file to exist for a given FileId")
+            .source();
+        //Scan the input and convert into RawAnnotations; convert them int their atomics to avoid borrow issue
+        scan(input)
+            .into_iter()
+            .map(|ann| {
+                let pre_offset = ann.pre_offset();
+                let result = parse_kv_pairs(ann.content);
+                (ann.kind, ann.line, pre_offset, result)
+            })
+            .collect()
+    };
 
-    for ann in annotations {
-        match parse_kv_pairs(ann.content) {
-            Ok(kv) => lowerable.push((
-                LoweredAnnotation {
-                    line: ann.line,
-                    kind: ann.kind,
-                },
-                kv,
-            )),
-            Err(e) => errors
-                .push(ParseError::from_pest_error(e, ann.line, ann.pre_offset(), file_id).into()),
-        }
-    }
-
-    let mut registers: Vec<RegId> = Vec::new();
-    let mut lower_state: LowerState = LowerState::Empty;
-
-    for (ann, kv) in lowerable {
-        match ann.kind {
-            AnnotationKind::Reg => {
-                if let LowerState::Active { reg, line } = lower_state {
-                    if let Err(e) = empty_reg_guard(&reg, line, file_id) {
-                        errors.push(e.into());
-                    } else {
-                        let reg_id = state.insert_reg(reg);
-                        state.add_reg_loc(
-                            reg_id,
-                            Location {
-                                line,
-                                file: file_id,
-                            },
-                        );
-                        registers.push(reg_id);
-                    }
-                }
-                lower_state = match Register::from_kv_values(&kv, ann.line, file_id) {
-                    Ok(reg) => LowerState::Active {
-                        reg,
-                        line: ann.line,
-                    },
-                    Err(e) => {
-                        errors.push(e.into());
-                        LowerState::Failed
-                    }
-                };
-            }
-            AnnotationKind::Field => match &mut lower_state {
-                LowerState::Empty => errors.push(
-                    LoweringError {
-                        message: "field annotation must follow a reg annotation".to_string(),
-                        line: ann.line,
-                        file: file_id,
-                    }
-                    .into(),
-                ),
-                LowerState::Active { reg, line } => {
-                    //guard against orphaned -- @field lines that apear after a -- @reg but not directly after it or another -- @field
-                    if ann.line.saturating_sub(*line + reg.get_fields().len()) != 1 {
-                        errors.push(
-                            LoweringError {
-                                message: "field annotation must immediately follow a reg or field annotation"
-                                    .to_string(),
-                                line: ann.line,
-                                file: file_id
-                            }
-                            .into(),
-                        );
-                    } else {
-                        match Field::from_kv_values(&kv, ann.line, file_id) {
-                            Ok(f) => {
-                                let field_id = state.insert_field(f);
-                                state.add_field_loc(
-                                    field_id,
-                                    Location {
-                                        line: ann.line,
-                                        file: file_id,
-                                    },
-                                );
-                                reg.add_field(field_id);
-                            }
-                            Err(e) => errors.push(e.into()),
-                        }
-                    }
-                }
-                LowerState::Failed => {
-                    continue;
-                }
+    let mut ctx = LowerCtx::new(file_id);
+    for (kind, line, pre_offset, result) in parsed {
+        match result {
+            Err(e) => ctx.on_parse_error(kind, line, pre_offset, e),
+            Ok(kv) => match kind {
+                AnnotationKind::Reg => ctx.on_reg(&kv, line, state),
+                AnnotationKind::Field => ctx.on_field(&kv, line, state),
             },
         }
     }
-
-    if let LowerState::Active { reg, line } = lower_state {
-        if let Err(e) = empty_reg_guard(&reg, line, file_id) {
-            errors.push(e.into());
-        } else {
-            let reg_id = state.insert_reg(reg);
-            state.add_reg_loc(
-                reg_id,
-                Location {
-                    line,
-                    file: file_id,
-                },
-            );
-            registers.push(reg_id);
-        }
-    }
-
-    if errors.is_empty() {
-        Ok(registers)
-    } else {
-        Err(errors)
-    }
-}
-
-fn empty_reg_guard(reg: &Register, line: usize, file: FileId) -> Result<(), LoweringError> {
-    if reg.get_fields().is_empty() {
-        Err(LoweringError {
-            message: "Registers require at least one @field.".into(),
-            line,
-            file,
-        })
-    } else {
-        Ok(())
-    }
+    ctx.finish(state)
 }
