@@ -81,15 +81,23 @@ impl From<Pair<'_, Rule>> for BitRange {
     //TODO: Add the possibility that BitRange can be specified using "Number" rule of grammar
     fn from(value: Pair<'_, Rule>) -> Self {
         debug_assert!(matches!(value.as_rule(), Rule::bit_range));
-        let split: Vec<&str> = value.as_str().split(':').collect();
-        if split.len() == 1 {
-            BitRange::Single(split[0].parse().unwrap())
-        } else if split.len() == 2 {
-            BitRange::Span(split[0].parse().unwrap(), split[1].parse().unwrap())
-        } else {
-            unreachable!(
-                "Only two kinds of bit ranges are supported: single indice (i.e. bits = 14) or ranges (i.e. bits = 3:6)",
-            )
+        let mut inner = value.into_inner();
+        let first = parse_number(inner.next().unwrap());
+        match inner.next() {
+            Some(second) => BitRange::Span(first, parse_number(second)),
+            None => BitRange::Single(first),
         }
+    }
+}
+
+fn parse_number(pair: Pair<'_, Rule>) -> u32 {
+    debug_assert!(matches!(pair.as_rule(), Rule::number));
+    let s = pair.as_str();
+    if s.starts_with("0x") {
+        u32::from_str_radix(&s[2..], 16).unwrap()
+    } else if s.starts_with("0b") {
+        u32::from_str_radix(&s[2..], 2).unwrap()
+    } else {
+        s.parse().unwrap()
     }
 }
