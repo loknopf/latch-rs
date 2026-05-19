@@ -32,7 +32,7 @@ pub fn check(file: PathBuf) -> String {
     "Check done - 0 errors found".to_string()
 }
 
-fn render_to_codespan(errors: Vec<LatchError>, state: &State) -> String {
+pub(crate) fn render_to_codespan(errors: Vec<LatchError>, state: &State) -> String {
     use codespan_reporting::term::{self, Config};
 
     let config = Config::default();

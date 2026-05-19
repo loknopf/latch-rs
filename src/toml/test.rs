@@ -68,9 +68,9 @@ fn test_round_trip_structure() {
         .iter()
         .find(|f| f.name == "mode")
         .expect("mode field missing");
-    assert_eq!(enable.bits, crate::types::BitRange::Single(0));
+    assert_eq!(enable.bits, crate::types::BitSpec::Single(0));
     assert_eq!(enable.access, crate::types::Access::RW);
-    assert_eq!(mode.bits, crate::types::BitRange::Span(1, 3));
+    assert_eq!(mode.bits, crate::types::BitSpec::Span(1, 3));
     assert_eq!(mode.access, crate::types::Access::RO);
 }
 

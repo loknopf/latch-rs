@@ -1,6 +1,6 @@
 use crate::{
     parser::{LatchParser, Rule},
-    types::{Access, BitRange, Value},
+    types::{Access, BitSpec, Value},
 };
 use pest::{Parser, error::Error, iterators::Pair};
 
@@ -17,7 +17,7 @@ pub(crate) fn parse_kv_pairs(input: &str) -> Result<Vec<KvPair>, Error<Rule>> {
 
     Ok(pairs)
 }
-
+#[derive(Debug)]
 pub(crate) struct KvPair {
     //maybe intern later
     pub key: String,
@@ -42,13 +42,7 @@ impl From<Pair<'_, Rule>> for Value {
         match value.as_rule() {
             Rule::access => Value::Access(Access::from(value)),
             Rule::bare_value => Value::Bare(value.as_str().to_string()),
-            Rule::bin_number => {
-                Value::BinNumber(u64::from_str_radix(&value.as_str()[2..], 2).unwrap())
-            }
-            Rule::bit_range => Value::BitRange(BitRange::from(value)),
-            Rule::hex_number => {
-                Value::HexNumber(u64::from_str_radix(&value.as_str()[2..], 16).unwrap())
-            }
+            Rule::bit_spec => Value::BitSpec(BitSpec::from(value)),
             Rule::quoted_csv => {
                 let s = value.as_str();
                 Value::QuotedCSV(
@@ -77,26 +71,25 @@ impl From<Pair<'_, Rule>> for Access {
     }
 }
 
-impl From<Pair<'_, Rule>> for BitRange {
-    //TODO: Add the possibility that BitRange can be specified using "Number" rule of grammar
+impl From<Pair<'_, Rule>> for BitSpec {
     fn from(value: Pair<'_, Rule>) -> Self {
-        debug_assert!(matches!(value.as_rule(), Rule::bit_range));
+        debug_assert!(matches!(value.as_rule(), Rule::bit_spec));
         let mut inner = value.into_inner();
         let first = parse_number(inner.next().unwrap());
         match inner.next() {
-            Some(second) => BitRange::Span(first, parse_number(second)),
-            None => BitRange::Single(first),
+            Some(second) => BitSpec::Span(first, parse_number(second)),
+            None => BitSpec::Single(first),
         }
     }
 }
 
-fn parse_number(pair: Pair<'_, Rule>) -> u32 {
+fn parse_number(pair: Pair<'_, Rule>) -> u64 {
     debug_assert!(matches!(pair.as_rule(), Rule::number));
     let s = pair.as_str();
     if s.starts_with("0x") {
-        u32::from_str_radix(&s[2..], 16).unwrap()
+        u64::from_str_radix(&s[2..], 16).unwrap()
     } else if s.starts_with("0b") {
-        u32::from_str_radix(&s[2..], 2).unwrap()
+        u64::from_str_radix(&s[2..], 2).unwrap()
     } else {
         s.parse().unwrap()
     }

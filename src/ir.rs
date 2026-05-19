@@ -1,7 +1,7 @@
 use crate::{
     parser::{KvPair, LoweringError},
     state::{FieldId, FileId},
-    types::{Access, BitRange, Value},
+    types::{Access, BitSpec, Value},
 };
 
 #[derive(Debug, Clone)]
@@ -99,7 +99,7 @@ impl Register {
 #[derive(Debug, Clone)]
 pub(crate) struct Field {
     pub(crate) name: String,
-    pub(crate) bits: BitRange,
+    pub(crate) bits: BitSpec,
     pub(crate) access: Access,
     pub(crate) description: Option<String>,
     pub(crate) enum_values: Option<Vec<String>>,
@@ -111,6 +111,7 @@ impl Field {
         line: usize,
         file: FileId,
     ) -> Result<Self, LoweringError> {
+        dbg!(values);
         let name = require(
             values,
             |v| v.key == "name",
@@ -156,7 +157,7 @@ impl Field {
             access: access.as_access().expect(
                 "Access must be either RO, RW or WO. If absent it is replaced by RO per default",
             ),
-            bits: bits.as_bit_range().expect("Expecting a bit range."),
+            bits: bits.as_bit_spec().expect("Expecting a bit range."),
             description: description,
             enum_values: enum_values,
             name: name.as_string().expect("Expecting a name.").clone(),
@@ -165,10 +166,10 @@ impl Field {
 
     pub(crate) fn bits_overlap(&self, other: &Field) -> bool {
         match (self.bits, other.bits) {
-            (BitRange::Single(i), BitRange::Single(o)) => i == o,
-            (BitRange::Single(i), BitRange::Span(o, v))
-            | (BitRange::Span(o, v), BitRange::Single(i)) => o <= i && i <= v,
-            (BitRange::Span(i, o), BitRange::Span(k, v)) => i <= v && k <= o,
+            (BitSpec::Single(i), BitSpec::Single(o)) => i == o,
+            (BitSpec::Single(i), BitSpec::Span(o, v))
+            | (BitSpec::Span(o, v), BitSpec::Single(i)) => o <= i && i <= v,
+            (BitSpec::Span(i, o), BitSpec::Span(k, v)) => i <= v && k <= o,
         }
     }
 }

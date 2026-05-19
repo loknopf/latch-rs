@@ -9,9 +9,9 @@ pub(crate) use crate::parser::{
 };
 use crate::{
     error::LatchError,
-    ir::{Field, Register},
+    ir::Register,
     parser::lower::LowerCtx,
-    state::{FileId, Location, RegId, State},
+    state::{FileId, RegId, State},
 };
 
 mod error;

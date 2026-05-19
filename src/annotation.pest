@@ -4,10 +4,10 @@ kv_pair = { key ~ "=" ~ value }
 kv_list = { SOI ~ kv_pair+ ~ EOI }
 
 key   = @{ ASCII_ALPHA_LOWER+ ~ ("_" ~ ASCII_ALPHA_LOWER+)* }
-value =  { access | hex_number | bin_number | bit_range | quoted_csv | bare_value }
+value =  { access | bit_spec | quoted_csv | bare_value }
 
 number     = @{ hex_number | bin_number | ASCII_DIGIT+ }
-bit_range  = ${ number ~ ":" ~ number | number }
+bit_spec   = ${ number ~ ":" ~ number | number }
 access     = @{ "RW" | "RO" | "WO" }
 hex_number = @{ "0x" ~ ASCII_HEX_DIGIT+ }
 bin_number = @{ "0b" ~ ASCII_BIN_DIGIT+ }

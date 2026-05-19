@@ -6,7 +6,7 @@ use crate::{
     ir::{Field, Register},
     state::{FieldId, RegId, State},
     toml::error::TomlError,
-    types::{Access, BitRange},
+    types::{Access, BitSpec},
 };
 
 #[derive(Debug, Serialize)]
@@ -114,7 +114,7 @@ impl TryFrom<toml::Value> for TomlRegister {
 
 #[derive(Debug, Serialize)]
 pub(super) struct TomlField {
-    bits: BitRange,
+    bits: BitSpec,
     #[serde(skip_serializing_if = "Access::is_read_only")]
     access: Access,
     description: Option<String>,
@@ -153,7 +153,7 @@ impl TryFrom<toml::Value> for TomlField {
                 .get("bits")
                 .ok_or_else(|| TomlError::msg("field is missing required member 'bits'"))?;
             let bits =
-                BitRange::deserialize(bits.clone()).map_err(|e| TomlError::msg(e.to_string()))?;
+                BitSpec::deserialize(bits.clone()).map_err(|e| TomlError::msg(e.to_string()))?;
             let access = match table.get("access") {
                 Some(v) => {
                     Access::deserialize(v.clone()).map_err(|e| TomlError::msg(e.to_string()))?

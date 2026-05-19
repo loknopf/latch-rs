@@ -1,7 +1,8 @@
 use crate::{
+    error::LatchError,
     ir::{Field, Register},
     state::State,
-    types::{Access, BitRange},
+    types::{Access, BitSpec},
 };
 
 use super::parse;
@@ -11,7 +12,13 @@ use super::parse;
 fn ok_registers(state: &mut State, input: &str) -> Vec<Register> {
     let id = state.add_file("ok_reg".to_string(), input.to_string());
     parse(state, id)
-        .unwrap_or_else(|e| panic!("expected successful parse, got {} errors", e.len()))
+        .unwrap_or_else(|errors| {
+            let rendered = crate::render_to_codespan(
+                errors.into_iter().map(LatchError::from).collect(),
+                state,
+            );
+            panic!("expected successful parse:\n{rendered}")
+        })
         .iter()
         .map(|reg| state.get_reg(*reg))
         .cloned()
@@ -49,10 +56,10 @@ fn register_with_two_fields() {
     assert_eq!(registers.len(), 1);
     assert_eq!(registers[0].get_fields().len(), 2);
     assert_eq!(field_0.name, "tx_en");
-    assert_eq!(field_0.bits, BitRange::Single(0));
+    assert_eq!(field_0.bits, BitSpec::Single(0));
     assert_eq!(field_0.access, Access::RW);
     assert_eq!(field_1.name, "rx_en");
-    assert_eq!(field_1.bits, BitRange::Single(1));
+    assert_eq!(field_1.bits, BitSpec::Single(1));
     assert_eq!(field_1.access, Access::RO);
 }
 
@@ -80,13 +87,13 @@ fn two_consecutive_registers() {
     assert_eq!(registers[0].get_fields().len(), 1);
     assert_eq!(registers[1].get_fields().len(), 2);
     assert_eq!(reg0_fields[0].name, "rx_in");
-    assert_eq!(reg0_fields[0].bits, BitRange::Span(0, 6));
+    assert_eq!(reg0_fields[0].bits, BitSpec::Span(0, 6));
     assert_eq!(reg0_fields[0].access, Access::RO);
     assert_eq!(reg1_fields[0].name, "tx_out");
-    assert_eq!(reg1_fields[0].bits, BitRange::Span(0, 6));
+    assert_eq!(reg1_fields[0].bits, BitSpec::Span(0, 6));
     assert_eq!(reg1_fields[0].access, Access::WO);
     assert_eq!(reg1_fields[1].name, "rx_in");
-    assert_eq!(reg1_fields[1].bits, BitRange::Single(7));
+    assert_eq!(reg1_fields[1].bits, BitSpec::Single(7));
     assert_eq!(reg1_fields[1].access, Access::RW);
 }
 
@@ -130,6 +137,36 @@ fn multiple_registers_exist_in_source_map() {
         state.get_field_loc(reg1_field_ids[1]).map(|l| l.line),
         Some(4)
     );
+}
+
+#[test]
+fn bit_spec_fields_different_number_formats() {
+    let src = "\
+-- @reg offset=0x04 name=status\n\
+-- @field bits=0x00 name=tx_en access=RW\n\
+-- @field bits=0x01:0x03 name=tx_en access=RW\n\
+-- @field bits=0b100 name=tx_en access=RW\n\
+-- @field bits=0b101:8 name=tx_en access=RW\n\
+-- @field bits=0x09:0b1100 name=rx_en access=RO\n\
+-- @field bits=13:0x10 name=tx_en access=RW\n";
+    let mut state = State::default();
+    let registers = ok_registers(&mut state, src);
+    let field_ids = registers[0].get_fields();
+    let field_0 = state.get_field(field_ids[0]);
+    let field_1 = state.get_field(field_ids[1]);
+    let field_2 = state.get_field(field_ids[2]);
+    let field_3 = state.get_field(field_ids[3]);
+    let field_4 = state.get_field(field_ids[4]);
+    let field_5 = state.get_field(field_ids[5]);
+
+    assert_eq!(registers.len(), 1);
+    assert_eq!(registers[0].get_fields().len(), 6);
+    assert_eq!(field_0.bits, BitSpec::Single(0));
+    assert_eq!(field_1.bits, BitSpec::Span(1, 3));
+    assert_eq!(field_2.bits, BitSpec::Single(4));
+    assert_eq!(field_3.bits, BitSpec::Span(5, 8));
+    assert_eq!(field_4.bits, BitSpec::Span(9, 12));
+    assert_eq!(field_5.bits, BitSpec::Span(13, 16));
 }
 
 // error cases
