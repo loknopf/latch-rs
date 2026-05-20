@@ -169,6 +169,27 @@ fn bit_spec_fields_different_number_formats() {
     assert_eq!(field_5.bits, BitSpec::Span(13, 16));
 }
 
+#[test]
+fn register_with_two_fields_verilog() {
+    let src = "\
+// @reg offset=0x04 name=status\n\
+// @field bits=0 name=tx_en access=RW\n\
+// @field bits=1 name=rx_en access=RO\n";
+    let mut state = State::default();
+    let registers = ok_registers(&mut state, src);
+    let field_ids = registers[0].get_fields();
+    let field_0 = state.get_field(field_ids[0]).clone();
+    let field_1 = state.get_field(field_ids[1]).clone();
+    assert_eq!(registers.len(), 1);
+    assert_eq!(registers[0].get_fields().len(), 2);
+    assert_eq!(field_0.name, "tx_en");
+    assert_eq!(field_0.bits, BitSpec::Single(0));
+    assert_eq!(field_0.access, Access::RW);
+    assert_eq!(field_1.name, "rx_en");
+    assert_eq!(field_1.bits, BitSpec::Single(1));
+    assert_eq!(field_1.access, Access::RO);
+}
+
 // error cases
 
 #[test]

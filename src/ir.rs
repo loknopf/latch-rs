@@ -111,7 +111,6 @@ impl Field {
         line: usize,
         file: FileId,
     ) -> Result<Self, LoweringError> {
-        dbg!(values);
         let name = require(
             values,
             |v| v.key == "name",
